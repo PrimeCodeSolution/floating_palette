@@ -1,0 +1,22 @@
+name: floating_palette_generator
+description: Code generator for floating_palette. Generates entry points and type-safe controllers.
+version: 0.1.0
+repository: https://github.com/PrimeCodeSolution/floating_palette
+homepage: https://github.com/PrimeCodeSolution/floating_palette
+issue_tracker: https://github.com/PrimeCodeSolution/floating_palette/issues
+
+resolution: workspace
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  build: ">=3.0.0 <4.0.0"
+  source_gen: ">=3.0.0 <4.0.0"
+  analyzer: ">=7.0.0 <11.0.0"
+  floating_palette_annotations:
+    path: ../floating_palette_annotations
+
+dev_dependencies:
+  build_runner: ^2.4.0
+  test: ^1.24.0
