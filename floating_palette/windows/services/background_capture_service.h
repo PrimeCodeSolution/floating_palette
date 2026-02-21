@@ -1,0 +1,39 @@
+#pragma once
+
+#include <flutter/method_channel.h>
+#include <flutter/plugin_registrar_windows.h>
+#include <flutter/standard_method_codec.h>
+
+#include <memory>
+#include <string>
+
+#include "../core/window_store.h"
+
+namespace floating_palette {
+
+class BackgroundCaptureService {
+ public:
+  explicit BackgroundCaptureService(flutter::PluginRegistrarWindows* registrar);
+
+  void SetEventSink(EventSink sink) { event_sink_ = std::move(sink); }
+  void Handle(const std::string& command,
+              const std::string* window_id,
+              const flutter::EncodableMap& params,
+              std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
+ private:
+  flutter::PluginRegistrarWindows* registrar_;
+  EventSink event_sink_;
+
+  void CheckPermission(std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+  void RequestPermission(std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+  void Start(const std::string* window_id,
+             const flutter::EncodableMap& params,
+             std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+  void Stop(const std::string* window_id,
+            std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+  void GetTextureId(const std::string* window_id,
+                    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+};
+
+}  // namespace floating_palette
