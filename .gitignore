@@ -1,0 +1,34 @@
+# Dart/Flutter
+.dart_tool/
+.packages
+pubspec.lock
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Build artifacts
+build/
+*.js_
+*.js.deps
+*.js.map
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# macOS
+.DS_Store
+**/macos/Pods/
+**/macos/Flutter/ephemeral/
+
+# Generated
+.metadata
+Podfile.lock
+*.g.dart
+!floating_palette/lib/src/ffi/ffi_bindings.g.dart
+
+# Miscellaneous
+.env
+*.log

@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  annotations:
+    name: Annotations (analyze)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: floating_palette_annotations
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - run: dart pub get
+      - run: dart analyze --fatal-infos
+
+  generator:
+    name: Generator (analyze + test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: floating_palette_generator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - run: dart pub get
+      - run: dart analyze --fatal-infos
+      - run: dart test
+
+  floating_palette:
+    name: Plugin (analyze + test)
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: floating_palette
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - run: flutter analyze --fatal-infos
+      - run: flutter test

@@ -1,0 +1,10 @@
+name: floating_palette_workspace
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+workspace:
+  - floating_palette_annotations
+  - floating_palette_generator
+  - floating_palette
