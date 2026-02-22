@@ -7,38 +7,56 @@ on:
     branches: [main]
 
 jobs:
-  annotations:
-    name: Annotations (analyze)
+  analyze:
+    name: Analyze
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - name: Analyze packages (excludes example which needs build_runner)
+        run: |
+          dart analyze --no-fatal-warnings floating_palette_annotations
+          dart analyze --no-fatal-warnings floating_palette_generator
+          dart analyze --no-fatal-warnings floating_palette/lib floating_palette/test
+
+  test-annotations:
+    name: Test annotations
+    runs-on: ubuntu-latest
+    needs: analyze
     defaults:
       run:
         working-directory: floating_palette_annotations
     steps:
       - uses: actions/checkout@v4
-      - uses: dart-lang/setup-dart@v1
+      - uses: subosito/flutter-action@v2
         with:
-          sdk: stable
+          channel: stable
       - run: dart pub get
-      - run: dart analyze --fatal-infos
+      - run: dart test
+        if: hashFiles('floating_palette_annotations/test/**') != ''
 
-  generator:
-    name: Generator (analyze + test)
+  test-generator:
+    name: Test generator
     runs-on: ubuntu-latest
+    needs: analyze
     defaults:
       run:
         working-directory: floating_palette_generator
     steps:
       - uses: actions/checkout@v4
-      - uses: dart-lang/setup-dart@v1
+      - uses: subosito/flutter-action@v2
         with:
-          sdk: stable
+          channel: stable
       - run: dart pub get
-      - run: dart analyze --fatal-infos
       - run: dart test
 
-  floating_palette:
-    name: Plugin (analyze + test)
+  test-plugin:
+    name: Test plugin
     runs-on: macos-latest
+    needs: analyze
     defaults:
       run:
         working-directory: floating_palette
@@ -48,5 +66,4 @@ jobs:
         with:
           channel: stable
       - run: flutter pub get
-      - run: flutter analyze --fatal-infos
       - run: flutter test

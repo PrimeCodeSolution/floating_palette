@@ -233,7 +233,9 @@ class InputManager {
     if (_focusedEntity == entity) return;
 
     _focusedEntity = entity;
-    _focusController.add(entity);
+    if (!_focusController.isClosed) {
+      _focusController.add(entity);
+    }
 
     // Update native focus
     switch (entity) {
