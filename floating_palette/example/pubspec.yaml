@@ -3,16 +3,16 @@ description: Floating Palette example app.
 publish_to: 'none'
 version: 1.0.0+1
 
+resolution: workspace
+
 environment:
   sdk: ^3.10.4
 
 dependencies:
   flutter:
     sdk: flutter
-  floating_palette:
-    path: ../
-  floating_palette_annotations:
-    path: ../../floating_palette_annotations
+  floating_palette: ^0.1.0
+  floating_palette_annotations: ^0.1.0
   hotkey_manager: ^0.2.3
   liquid_glass_renderer: ^0.2.0-dev.4
   liquid_glass_easy: ^1.1.1
@@ -24,8 +24,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   build_runner: ^2.4.0
-  floating_palette_generator:
-    path: ../../floating_palette_generator
+  floating_palette_generator: ^0.1.0
 
 flutter:
   uses-material-design: true

@@ -8,3 +8,4 @@ workspace:
   - floating_palette_annotations
   - floating_palette_generator
   - floating_palette
+  - floating_palette/example

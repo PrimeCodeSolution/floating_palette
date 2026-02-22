@@ -1,0 +1,59 @@
+name: Auto-tag releases
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    name: Create release tags
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Scan for release commits and create tags
+        run: |
+          created_tags=()
+
+          # Check all commits in this push (handles merge commits and squash merges).
+          # For squash merges, the individual commit messages appear in the body,
+          # so we scan the full commit message (subject + body).
+          for sha in $(git log --format='%H' ${{ github.event.before }}..${{ github.sha }} 2>/dev/null || echo "${{ github.sha }}"); do
+            message=$(git log -1 --format='%B' "$sha")
+
+            # Match lines like: chore(floating_palette): release 1.2.3
+            while IFS= read -r line; do
+              if [[ "$line" =~ ^chore\(([a-z_]+)\):\ release\ ([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+                pkg="${BASH_REMATCH[1]}"
+                version="${BASH_REMATCH[2]}"
+                tag="${pkg}-v${version}"
+
+                # Skip if tag already exists
+                if git rev-parse "$tag" >/dev/null 2>&1; then
+                  echo "Tag $tag already exists, skipping"
+                  continue
+                fi
+
+                echo "Creating tag: $tag"
+                git tag "$tag"
+                created_tags+=("$tag")
+              fi
+            done <<< "$message"
+          done
+
+          if [ ${#created_tags[@]} -gt 0 ]; then
+            echo "Pushing tags: ${created_tags[*]}"
+            git push origin "${created_tags[@]}"
+          else
+            echo "No release commits found, nothing to tag"
+          fi
