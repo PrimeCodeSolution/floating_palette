@@ -85,7 +85,7 @@ if (caps.blur) {
 }
 
 if (caps.transform) {
-  controller.setScale(1.5);
+  controller.scale(1.5);
 }
 
 if (caps.glassEffect) {
@@ -102,11 +102,14 @@ print(caps.osVersion);  // OS version string
 Configure what happens when using unsupported features:
 
 ```dart
-PaletteAnnotation(
-  id: 'my-palette',
-  widget: MyWidget,
-  // Choose behavior for unsupported features
+// At runtime via controller
+controller.updateConfig(
   unsupportedBehavior: UnsupportedBehavior.warnOnce,  // Default
+);
+
+// Or at creation via PaletteConfig
+PaletteConfig(
+  unsupportedBehavior: UnsupportedBehavior.throwError,
 )
 ```
 
@@ -256,17 +259,15 @@ input.onClickOutside('my-palette', () {
 Palette groups allow multiple palettes to act as one for click-outside handling:
 
 ```dart
-// Create a group
-final group = PaletteGroup(['main-menu', 'submenu', 'tooltip']);
+// Create a named group
+const menuGroup = PaletteGroup('menu');
 
-// Register the group
-input.registerGroup(group);
+// Pass the group when showing palettes
+Palettes.menu.show(group: menuGroup);
+Palettes.submenu.show(group: menuGroup);
 
 // Clicks on any palette in the group won't trigger click-outside
 // for other palettes in the group
-
-// Unregister
-input.unregisterGroup(group);
 ```
 
 ## Hot Restart Recovery
@@ -353,7 +354,7 @@ test('handles events', () async {
   final controller = testHost.createController<void>('test');
   final events = <bool>[];
 
-  controller.visibility.listen(events.add);
+  controller.visibilityStream.listen(events.add);
   testHost.simulateShown('test');
 
   await Future.delayed(Duration.zero);
