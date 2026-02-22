@@ -100,7 +100,7 @@ class PaletteController<TArgs> implements PaletteIdentifiable {
   final Map<Type, List<_TypedCallbackBase>> _messageCallbacks = {};
 
   /// Stream controller for visibility changes.
-  final _visibilityController = StreamController<bool>.broadcast();
+  final _visibilityController = StreamController<bool>.broadcast(sync: true);
 
   PaletteController({
     required this.id,
