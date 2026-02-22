@@ -1,6 +1,5 @@
 name: Publish to pub.dev
 
-# Trigger on version tags pushed by Melos
 on:
   push:
     tags:
@@ -10,50 +9,34 @@ on:
 
 jobs:
   publish:
-    name: Publish ${{ matrix.package }}
+    name: Publish
     runs-on: ubuntu-latest
-    # Required for pub.dev OIDC token exchange
     permissions:
       id-token: write
-
-    strategy:
-      max-parallel: 1  # Publish sequentially to respect dependency order
-      matrix:
-        include:
-          - package: floating_palette_annotations
-            uses_flutter: false
-          - package: floating_palette_generator
-            uses_flutter: false
-          - package: floating_palette
-            uses_flutter: true
 
     steps:
       - uses: actions/checkout@v4
 
-      # Check if this tag matches this matrix entry
-      - name: Check tag
-        id: check
+      - name: Detect package from tag
+        id: detect
         run: |
           TAG="${{ github.ref_name }}"
-          if [[ "$TAG" == "${{ matrix.package }}-v"* ]]; then
-            echo "should_publish=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_publish=false" >> "$GITHUB_OUTPUT"
-          fi
+          # Strip version suffix to get package name
+          PKG="${TAG%-v*}"
+          case "$PKG" in
+            floating_palette_annotations|floating_palette_generator|floating_palette)
+              echo "package=$PKG" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::Unknown tag format: $TAG"
+              exit 1
+              ;;
+          esac
 
-      - name: Setup Dart
-        if: steps.check.outputs.should_publish == 'true' && !matrix.uses_flutter
-        uses: dart-lang/setup-dart@v1
-        with:
-          sdk: stable
-
-      - name: Setup Flutter
-        if: steps.check.outputs.should_publish == 'true' && matrix.uses_flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           channel: stable
 
       - name: Publish
-        if: steps.check.outputs.should_publish == 'true'
-        working-directory: ${{ matrix.package }}
+        working-directory: ${{ steps.detect.outputs.package }}
         run: dart pub publish --force

@@ -1,0 +1,21 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: pub
+    directory: /floating_palette_annotations
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: pub
+    directory: /floating_palette_generator
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: pub
+    directory: /floating_palette
+    schedule:
+      interval: weekly

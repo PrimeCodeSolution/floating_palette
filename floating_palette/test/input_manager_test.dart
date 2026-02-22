@@ -216,7 +216,7 @@ void main() {
       await inputManager.setFocus(const HostFocused());
 
       expect(inputManager.focusedEntity, isA<HostFocused>());
-      expect(mock.wasCalled('focus', 'restoreFocus'), true);
+      expect(mock.wasCalled('focus', 'focusMainWindow'), true);
     });
 
     test('focusStream emits changes', () async {

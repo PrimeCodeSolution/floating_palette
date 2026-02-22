@@ -1,50 +1,136 @@
-name: Release (version + tag)
+name: Release
 
-# Manually triggered when you're ready to release
 on:
   workflow_dispatch:
     inputs:
+      package:
+        description: Package to release
+        type: choice
+        required: true
+        options:
+          - floating_palette_annotations
+          - floating_palette_generator
+          - floating_palette
+          - all
+      bump:
+        description: Version bump
+        type: choice
+        required: true
+        options:
+          - patch
+          - minor
+          - major
       dry_run:
-        description: 'Dry run (no commits/tags)'
+        description: Dry run (no commits or tags)
         type: boolean
         default: true
 
 permissions:
-  contents: write  # Needed to push version commits and tags
+  contents: write
+  pull-requests: write
 
 jobs:
-  version:
-    name: Version packages
+  release:
+    name: Release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Full history needed for conventional commits
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: dart-lang/setup-dart@v1
-        with:
-          sdk: stable
-
-      - name: Setup Melos
-        run: dart pub global activate melos
-
-      - name: Bootstrap
-        run: melos bootstrap
 
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Version (dry run)
-        if: inputs.dry_run
-        run: melos version --dry-run
+      - name: Bump versions
+        id: bump
+        run: |
+          packages=()
+          summaries=()
 
-      - name: Version
-        if: ${{ !inputs.dry_run }}
-        run: melos version --yes
+          bump_version() {
+            local pkg="$1"
+            local pubspec="$pkg/pubspec.yaml"
 
-      - name: Push version commits and tags
-        if: ${{ !inputs.dry_run }}
-        run: git push --follow-tags
+            current=$(grep '^version:' "$pubspec" | head -1 | awk '{print $2}')
+            IFS='.' read -r major minor patch <<< "$current"
+
+            case "${{ inputs.bump }}" in
+              major) major=$((major + 1)); minor=0; patch=0 ;;
+              minor) minor=$((minor + 1)); patch=0 ;;
+              patch) patch=$((patch + 1)) ;;
+            esac
+            new_version="$major.$minor.$patch"
+
+            echo "[$pkg] $current -> $new_version"
+
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              echo "  (dry run — skipping)"
+              return
+            fi
+
+            sed -i "s/^version: .*/version: $new_version/" "$pubspec"
+
+            changelog="$pkg/CHANGELOG.md"
+            if [ -f "$changelog" ]; then
+              date=$(date +%Y-%m-%d)
+              sed -i "s/^## Unreleased$/## Unreleased\n\n## $new_version — $date/" "$changelog"
+            fi
+
+            git add "$pubspec" "$changelog" 2>/dev/null || true
+            git commit -m "chore($pkg): release $new_version"
+
+            packages+=("$pkg")
+            summaries+=("$pkg v$new_version")
+          }
+
+          if [ "${{ inputs.package }}" = "all" ]; then
+            bump_version floating_palette_annotations
+            bump_version floating_palette_generator
+            bump_version floating_palette
+          else
+            bump_version "${{ inputs.package }}"
+          fi
+
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "dry_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Build branch name and PR title
+          if [ "${{ inputs.package }}" = "all" ]; then
+            # Use first package version for branch name
+            first_version=$(grep '^version:' floating_palette_annotations/pubspec.yaml | awk '{print $2}')
+            branch="release/all-v${first_version}"
+            title="chore: release ${summaries[*]}"
+          else
+            pkg="${{ inputs.package }}"
+            version=$(grep '^version:' "$pkg/pubspec.yaml" | awk '{print $2}')
+            branch="release/${pkg}-v${version}"
+            title="chore: release ${pkg} v${version}"
+          fi
+
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          echo "title=$title" >> "$GITHUB_OUTPUT"
+          echo "dry_run=false" >> "$GITHUB_OUTPUT"
+
+      - name: Push branch and create PR
+        if: steps.bump.outputs.dry_run == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          branch="${{ steps.bump.outputs.branch }}"
+          title="${{ steps.bump.outputs.title }}"
+
+          git checkout -b "$branch"
+          git push -u origin "$branch"
+
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "$title" \
+            --body "Automated release PR created by the Release workflow.
+
+          Merge this PR to trigger automatic tagging and publishing to pub.dev.
+
+          **Bump type:** ${{ inputs.bump }}
+          **Package(s):** ${{ inputs.package }}"

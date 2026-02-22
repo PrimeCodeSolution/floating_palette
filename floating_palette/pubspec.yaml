@@ -15,8 +15,7 @@ dependencies:
   flutter:
     sdk: flutter
   ffi: ^2.1.0
-  floating_palette_annotations:
-    path: ../floating_palette_annotations
+  floating_palette_annotations: ^0.1.0
 
 dev_dependencies:
   flutter_test:

@@ -22,7 +22,7 @@ class WindowClient extends ServiceClient {
     String? entryPoint,
     bool keepAlive = false,
   }) async {
-    final result = await send<String>('create', params: {
+    final result = await send<String>('create', windowId: id, params: {
       'id': id,
       'entryPoint': entryPoint ?? 'paletteMain',
       'cornerRadius': appearance.cornerRadius,

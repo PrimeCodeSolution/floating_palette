@@ -9,23 +9,27 @@ Thanks for your interest in contributing!
 
 ## Development Setup
 
-1. Clone the repo: `git clone https://github.com/PrimeCodeSolution/floating_palette.git`
-2. Install dependencies for each package:
-   ```bash
-   cd floating_palette && flutter pub get
-   cd ../floating_palette_annotations && dart pub get
-   cd ../floating_palette_generator && dart pub get
-   ```
-3. Run code generation in the example app:
-   ```bash
-   cd floating_palette/example && dart run build_runner build
-   ```
+This repo uses [Dart workspaces](https://dart.dev/tools/pub/workspaces) — a single `pub get` at the root resolves all packages locally:
+
+```bash
+git clone https://github.com/PrimeCodeSolution/floating_palette.git
+cd floating_palette
+dart pub get
+```
+
+That's it. All three packages (`floating_palette_annotations`, `floating_palette_generator`, `floating_palette`) are resolved through the workspace. No extra tools needed.
+
+To run code generation in the example app:
+
+```bash
+cd floating_palette/example && dart run build_runner build
+```
 
 ## Pull Requests
 
 1. Fork the repo and create a feature branch from `main`.
-2. Make your changes and ensure the code compiles without errors.
-3. Run any existing tests: `flutter test` in the relevant package directory.
+2. Make your changes and ensure `dart analyze` passes from the repo root.
+3. Run tests in the relevant package directory (e.g. `dart test` or `flutter test`).
 4. Open a PR with a clear description of what changed and why.
 
 ## Code Style
