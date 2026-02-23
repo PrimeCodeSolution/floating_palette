@@ -1,6 +1,6 @@
 builders:
   floating_palette_generator:
-    import: "package:floating_palette_generator/builder.dart"
+    import: "package:floating_palette_generator/floating_palette_generator.dart"
     builder_factories: ["paletteBuilder"]
     build_extensions: {".dart": [".floating_palette.g.part"]}
     auto_apply: dependents
