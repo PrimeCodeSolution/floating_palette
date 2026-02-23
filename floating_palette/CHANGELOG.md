@@ -1,3 +1,7 @@
+## 0.1.1
+
+- No changes (version bump for CI/CD pipeline validation)
+
 ## 0.1.0
 
 * Native floating palette windows for macOS using NSPanel
