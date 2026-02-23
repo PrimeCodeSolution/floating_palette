@@ -1,6 +1,6 @@
 name: floating_palette
 description: A Flutter plugin for creating floating palette panels on macOS. Provides native floating windows that automatically size to fit Flutter widget content.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/PrimeCodeSolution/floating_palette
 homepage: https://github.com/PrimeCodeSolution/floating_palette
 issue_tracker: https://github.com/PrimeCodeSolution/floating_palette/issues

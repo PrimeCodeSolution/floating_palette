@@ -1,3 +1,7 @@
+## 0.1.1
+
+- Rename `lib/builder.dart` to `lib/floating_palette_generator.dart` to match package name convention
+
 ## 0.1.0
 
 - Initial release
