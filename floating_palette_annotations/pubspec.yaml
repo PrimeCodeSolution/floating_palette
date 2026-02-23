@@ -1,6 +1,6 @@
 name: floating_palette_annotations
 description: Annotations for floating_palette code generation. Pure Dart, no Flutter dependencies.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/PrimeCodeSolution/floating_palette
 homepage: https://github.com/PrimeCodeSolution/floating_palette
 issue_tracker: https://github.com/PrimeCodeSolution/floating_palette/issues
