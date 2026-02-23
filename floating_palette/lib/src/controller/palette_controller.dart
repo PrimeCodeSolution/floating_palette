@@ -33,6 +33,7 @@ typedef PaletteMessageCallback<T> = void Function(T message);
 /// Provides imperative control over visibility, position, transforms, and effects.
 class PaletteController<TArgs> implements PaletteIdentifiable {
   /// The palette ID this controller manages.
+  @override
   final String id;
 
   /// The host that owns this controller.
@@ -297,10 +298,9 @@ class PaletteController<TArgs> implements PaletteIdentifiable {
       return;
     }
 
-    // Delay outside the serialized block so the lock isn't held during sleep
-    if (delay != null) await Future<void>.delayed(delay);
-
     await _serialized(() async {
+      if (delay != null) await Future<void>.delayed(delay);
+
       _currentArgs = args;
 
       // Ensure window exists
@@ -352,10 +352,9 @@ class PaletteController<TArgs> implements PaletteIdentifiable {
   }) async {
     if (!_isVisible) return;
 
-    // Delay outside the serialized block so the lock isn't held during sleep
-    if (delay != null) await Future<void>.delayed(delay);
-
     await _serialized(() async {
+      if (delay != null) await Future<void>.delayed(delay);
+
       // Re-check after acquiring the lock — may have been hidden by a concurrent operation
       if (!_isVisible) return;
 
@@ -1169,6 +1168,7 @@ class PaletteController<TArgs> implements PaletteIdentifiable {
   }
 
   void dispose() {
+    _cleanupEscapeHandler();
     for (final cb in _onDisposeCallbacks) {
       cb();
     }

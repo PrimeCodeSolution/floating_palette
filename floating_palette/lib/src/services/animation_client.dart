@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show debugPrint;
+
 import '../bridge/service_client.dart';
 
 /// Animatable properties.
@@ -77,7 +79,11 @@ class AnimationClient extends ServiceClient {
     final result = await send<bool>('isAnimating', windowId: id, params: {
       'property': property.name,
     });
-    return result ?? false;
+    if (result == null) {
+      debugPrint('[AnimationClient] isAnimating($id, ${property.name}) returned null — using fallback');
+      return false;
+    }
+    return result;
   }
 
   // ════════════════════════════════════════════════════════════════════════

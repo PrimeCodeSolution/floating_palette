@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show debugPrint;
+
 import '../bridge/service_client.dart';
 import '../snap/snap_events.dart';
 import '../snap/snap_types.dart';
@@ -27,6 +29,14 @@ class SnapClient extends ServiceClient {
     double gap = 0,
     SnapConfig config = const SnapConfig(),
   }) async {
+    if (followerId.isEmpty || targetId.isEmpty) {
+      debugPrint('[SnapClient] snap() called with empty ID — ignoring');
+      return;
+    }
+    if (followerId == targetId) {
+      debugPrint('[SnapClient] snap() called with self-snap — ignoring');
+      return;
+    }
     await send<void>('snap', params: {
       'followerId': followerId,
       'targetId': targetId,
@@ -66,7 +76,11 @@ class SnapClient extends ServiceClient {
     final result = await send<double>('getSnapDistance', params: {
       'followerId': followerId,
     });
-    return result ?? 0;
+    if (result == null) {
+      debugPrint('[SnapClient] getSnapDistance($followerId) returned null — using fallback');
+      return 0.0;
+    }
+    return result;
   }
 
   /// Register auto-snap configuration for a palette.

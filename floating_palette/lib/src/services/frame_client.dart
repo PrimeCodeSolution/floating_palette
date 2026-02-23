@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart' show debugPrint;
+
 import '../bridge/service_client.dart';
 
 /// Client for FrameService.
@@ -27,10 +29,10 @@ class FrameClient extends ServiceClient {
     await send<void>('setPosition', windowId: id, params: {
       'x': position.dx,
       'y': position.dy,
-      if (anchor != null) 'anchor': anchor,
+      'anchor': ?anchor,
       'animate': animate,
-      if (durationMs != null) 'durationMs': durationMs,
-      if (curve != null) 'curve': curve,
+      'durationMs': ?durationMs,
+      'curve': ?curve,
     });
   }
 
@@ -46,8 +48,8 @@ class FrameClient extends ServiceClient {
       'width': size.width,
       'height': size.height,
       'animate': animate,
-      if (durationMs != null) 'durationMs': durationMs,
-      if (curve != null) 'curve': curve,
+      'durationMs': ?durationMs,
+      'curve': ?curve,
     });
   }
 
@@ -65,16 +67,18 @@ class FrameClient extends ServiceClient {
       'width': bounds.width,
       'height': bounds.height,
       'animate': animate,
-      if (durationMs != null) 'durationMs': durationMs,
-      if (curve != null) 'curve': curve,
+      'durationMs': ?durationMs,
+      'curve': ?curve,
     });
   }
 
   /// Get current position.
   Future<Offset> getPosition(String id) async {
     final result = await sendForMap('getPosition', windowId: id);
-    assert(result != null, '[FrameClient] getPosition($id) returned null');
-    if (result == null) return Offset.zero;
+    if (result == null) {
+      debugPrint('[FrameClient] getPosition($id) returned null — using fallback');
+      return Offset.zero;
+    }
     return Offset(
       (result['x'] as num).toDouble(),
       (result['y'] as num).toDouble(),
@@ -84,8 +88,10 @@ class FrameClient extends ServiceClient {
   /// Get current size.
   Future<Size> getSize(String id) async {
     final result = await sendForMap('getSize', windowId: id);
-    assert(result != null, '[FrameClient] getSize($id) returned null');
-    if (result == null) return Size.zero;
+    if (result == null) {
+      debugPrint('[FrameClient] getSize($id) returned null — using fallback');
+      return Size.zero;
+    }
     return Size(
       (result['width'] as num).toDouble(),
       (result['height'] as num).toDouble(),
@@ -102,8 +108,10 @@ class FrameClient extends ServiceClient {
   /// Get current bounds.
   Future<Rect> getBounds(String id) async {
     final result = await sendForMap('getBounds', windowId: id);
-    assert(result != null, '[FrameClient] getBounds($id) returned null');
-    if (result == null) return Rect.zero;
+    if (result == null) {
+      debugPrint('[FrameClient] getBounds($id) returned null — using fallback');
+      return Rect.zero;
+    }
     return Rect.fromLTWH(
       (result['x'] as num).toDouble(),
       (result['y'] as num).toDouble(),

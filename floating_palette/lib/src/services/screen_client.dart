@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart' show debugPrint;
+
 import '../bridge/service_client.dart';
 
 /// Information about the active (frontmost) application window.
@@ -79,7 +81,10 @@ class ScreenClient extends ServiceClient {
   /// Get all available screens.
   Future<List<ScreenInfo>> getScreens() async {
     final result = await send<List<dynamic>>('getScreens');
-    if (result == null) return [];
+    if (result == null) {
+      debugPrint('[ScreenClient] getScreens() returned null — using fallback');
+      return [];
+    }
     return result
         .cast<Map<dynamic, dynamic>>()
         .map((m) => ScreenInfo.fromMap(m.cast<String, dynamic>()))
@@ -89,7 +94,11 @@ class ScreenClient extends ServiceClient {
   /// Get the screen a window is on.
   Future<int> getWindowScreen(String id) async {
     final result = await send<int>('getWindowScreen', windowId: id);
-    return result ?? 0;
+    if (result == null) {
+      debugPrint('[ScreenClient] getWindowScreen($id) returned null — using fallback');
+      return 0;
+    }
+    return result;
   }
 
   /// Move window to a specific screen.
@@ -102,14 +111,17 @@ class ScreenClient extends ServiceClient {
     await send<void>('moveToScreen', windowId: id, params: {
       'screenIndex': screenIndex,
       'animate': animate,
-      if (durationMs != null) 'durationMs': durationMs,
+      'durationMs': ?durationMs,
     });
   }
 
   /// Get cursor position.
   Future<Offset> getCursorPosition() async {
     final result = await sendForMap('getCursorPosition');
-    if (result == null) return Offset.zero;
+    if (result == null) {
+      debugPrint('[ScreenClient] getCursorPosition() returned null — using fallback');
+      return Offset.zero;
+    }
     return Offset(
       (result['x'] as num).toDouble(),
       (result['y'] as num).toDouble(),
@@ -119,7 +131,11 @@ class ScreenClient extends ServiceClient {
   /// Get the screen the cursor is on.
   Future<int> getCursorScreen() async {
     final result = await send<int>('getCursorScreen');
-    return result ?? 0;
+    if (result == null) {
+      debugPrint('[ScreenClient] getCursorScreen() returned null — using fallback');
+      return 0;
+    }
+    return result;
   }
 
   /// Get full screen info for the screen a window is currently on.

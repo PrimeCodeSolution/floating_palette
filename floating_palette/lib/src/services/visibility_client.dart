@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show debugPrint;
+
 import '../bridge/service_client.dart';
 
 /// Client for VisibilityService.
@@ -38,22 +40,28 @@ class VisibilityClient extends ServiceClient {
     await send<void>('setOpacity', windowId: id, params: {
       'opacity': opacity,
       'animate': animate,
-      if (durationMs != null) 'durationMs': durationMs,
+      'durationMs': ?durationMs,
     });
   }
 
   /// Get current visibility state.
   Future<bool> isVisible(String id) async {
     final result = await send<bool>('isVisible', windowId: id);
-    assert(result != null, '[VisibilityClient] isVisible($id) returned null');
-    return result ?? false;
+    if (result == null) {
+      debugPrint('[VisibilityClient] isVisible($id) returned null — using fallback');
+      return false;
+    }
+    return result;
   }
 
   /// Get current opacity.
   Future<double> getOpacity(String id) async {
     final result = await send<double>('getOpacity', windowId: id);
-    assert(result != null, '[VisibilityClient] getOpacity($id) returned null');
-    return result ?? 1.0;
+    if (result == null) {
+      debugPrint('[VisibilityClient] getOpacity($id) returned null — using fallback');
+      return 1.0;
+    }
+    return result;
   }
 
   // ════════════════════════════════════════════════════════════════════════

@@ -57,7 +57,7 @@ final class GlassAnimationBuffer extends Struct {
   external int curveType;
 
   @Array(2)
-  external Array<Uint8> _padding;
+  external Array<Uint8> _padding; // ignore: unused_field
 
   // Start bounds
   @Float()
@@ -98,7 +98,7 @@ final class GlassAnimationBuffer extends Struct {
   external double windowHeight;
 
   @Array(4)
-  external Array<Uint8> _padding2;
+  external Array<Uint8> _padding2; // ignore: unused_field
 
   @Uint64()
   external int animationIdPost;

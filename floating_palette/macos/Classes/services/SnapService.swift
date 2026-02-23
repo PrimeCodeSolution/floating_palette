@@ -106,12 +106,26 @@ final class SnapService {
 
     // MARK: - Snap Command
 
+    private static let validEdges: Set<String> = ["top", "bottom", "left", "right"]
+
     private func snap(params: [String: Any], result: @escaping FlutterResult) {
         guard let followerId = params["followerId"] as? String,
               let targetId = params["targetId"] as? String,
               let followerEdge = params["followerEdge"] as? String,
               let targetEdge = params["targetEdge"] as? String else {
             result(FlutterError(code: "INVALID_PARAMS", message: "followerId, targetId, followerEdge, targetEdge required", details: nil))
+            return
+        }
+
+        // Self-snap check
+        if followerId == targetId {
+            result(FlutterError(code: "INVALID_PARAMS", message: "Cannot snap a palette to itself", details: nil))
+            return
+        }
+
+        // Edge validation
+        if !SnapService.validEdges.contains(followerEdge) || !SnapService.validEdges.contains(targetEdge) {
+            result(FlutterError(code: "INVALID_PARAMS", message: "Invalid edge: followerEdge=\(followerEdge), targetEdge=\(targetEdge)", details: nil))
             return
         }
 
@@ -145,7 +159,7 @@ final class SnapService {
             guard let self = self,
                   let followerWindow = self.store.get(followerId),
                   let targetWindow = self.store.get(targetId) else {
-                result(nil)
+                result(FlutterError(code: "NOT_FOUND", message: "Window not found: follower=\(followerId), target=\(targetId)", details: nil))
                 return
             }
 

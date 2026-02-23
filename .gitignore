@@ -29,6 +29,9 @@ Podfile.lock
 *.g.dart
 !floating_palette/lib/src/ffi/ffi_bindings.g.dart
 
+# Claude
+CLAUDE.md
+
 # Miscellaneous
 .env
 *.log

@@ -4,6 +4,12 @@ version: 0.1.0
 repository: https://github.com/PrimeCodeSolution/floating_palette
 homepage: https://github.com/PrimeCodeSolution/floating_palette
 issue_tracker: https://github.com/PrimeCodeSolution/floating_palette/issues
+topics:
+  - flutter
+  - desktop
+  - macos
+  - panels
+  - floating-windows
 
 resolution: workspace
 
