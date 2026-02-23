@@ -82,6 +82,19 @@ final class InputService {
         25: 0x00000039,  // 9
         // Space
         49: 0x00000020,  // space
+        // Function keys
+        122: 0x100000801, // F1
+        120: 0x100000802, // F2
+        99:  0x100000803, // F3
+        118: 0x100000804, // F4
+        96:  0x100000805, // F5
+        97:  0x100000806, // F6
+        98:  0x100000807, // F7
+        100: 0x100000808, // F8
+        101: 0x100000809, // F9
+        109: 0x10000080a, // F10
+        103: 0x10000080b, // F11
+        111: 0x10000080c, // F12
     ]
 
     func setEventSink(_ sink: @escaping (String, String, String?, [String: Any]) -> Void) {
@@ -148,6 +161,7 @@ final class InputService {
 
                 // Convert macOS keyCode to Flutter logical key ID
                 guard let flutterKeyId = InputService.keyCodeToFlutterKeyId[event.keyCode] else {
+                    os_log("Unmapped keyCode=%{public}d type=%{public}@", log: Log.input, type: .debug, event.keyCode, event.type == .keyDown ? "keyDown" : "keyUp")
                     return event
                 }
 

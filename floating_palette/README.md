@@ -6,7 +6,7 @@ Native floating windows for Flutter desktop apps. Build Notion-style menus, Spot
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](#platform-support)
 
-<!-- TODO: add hero gif/video showing multiple palette types -->
+![Notion-style editor demo](https://raw.githubusercontent.com/PrimeCodeSolution/floating_palette/main/floating_palette/doc/demo-notion.webp)
 
 ## Features
 
@@ -19,7 +19,6 @@ Native floating windows for Flutter desktop apps. Build Notion-style menus, Spot
 - **Snap-to-Palette** — Attach palettes together so they move as one
 - **Hot Restart Safe** — Native windows survive hot restart, Dart state syncs automatically
 
-<!-- TODO: add feature showcase gif -->
 
 ## Installation
 
@@ -592,7 +591,7 @@ glass.animateRRect(windowId, fromRRect, toRRect,
 glass.disable(windowId);
 ```
 
-<!-- TODO: add glass effect gif -->
+![Glass blur effect demo](https://raw.githubusercontent.com/PrimeCodeSolution/floating_palette/main/floating_palette/doc/demo-glass.webp)
 
 ### Glass Materials
 
@@ -680,7 +679,7 @@ if (PaletteHost.instance.capabilities.blur) {
 }
 ```
 
-See [Advanced Guide](docs/advanced.md) for service clients, testing, FFI, custom services, and more.
+See [Advanced Guide](doc/advanced.md) for service clients, testing, FFI, custom services, and more.
 
 ## Example
 
@@ -693,7 +692,13 @@ The `example/` directory includes a complete demo with:
 - Analog clock (transparent, keep-alive)
 - Virtual keyboard (snap-to-palette)
 
-<!-- TODO: add example app screenshots/gifs -->
+| Notion Editor | Liquid Glass |
+|---|---|
+| ![Notion](https://raw.githubusercontent.com/PrimeCodeSolution/floating_palette/main/floating_palette/doc/demo-notion.webp) | ![Glass](https://raw.githubusercontent.com/PrimeCodeSolution/floating_palette/main/floating_palette/doc/demo-glass.webp) |
+
+| Chat Bubble | Clock |
+|---|---|
+| ![Chat](https://raw.githubusercontent.com/PrimeCodeSolution/floating_palette/main/floating_palette/doc/demo-chat.webp) | ![Clock](https://raw.githubusercontent.com/PrimeCodeSolution/floating_palette/main/floating_palette/doc/demo-clock.webp) |
 
 ```bash
 cd example

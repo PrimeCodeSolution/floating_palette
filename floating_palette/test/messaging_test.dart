@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:floating_palette/src/bridge/event.dart';
 import 'package:floating_palette/src/events/palette_event.dart';
 import 'package:floating_palette/src/services/message_client.dart';
 import 'package:floating_palette/src/testing/mock_native_bridge.dart';
@@ -154,6 +155,71 @@ void main() {
       // (we can't easily test this without accessing private state,
       // but at least verify dispose doesn't throw)
       expect(true, isTrue);
+    });
+  });
+
+  group('MessageClient dispose cleanup', () {
+    test('after dispose, event handler is unsubscribed from bridge', () {
+      final bridge = MockNativeBridge();
+      bridge.stubDefaults();
+      final disposableClient = MessageClient(bridge);
+
+      var callbackFired = false;
+      disposableClient.onMessage((_) => callbackFired = true);
+
+      // Dispose the client, which should unsubscribe from the bridge
+      disposableClient.dispose();
+
+      // Simulate a message event after dispose
+      bridge.simulateEvent(const NativeEvent(
+        service: 'message',
+        event: 'test-type',
+        windowId: 'test-palette',
+        data: {'key': 'value'},
+      ));
+
+      // The callback should NOT fire because dispose unsubscribed
+      expect(callbackFired, isFalse);
+    });
+
+    test('after dispose, type-specific callbacks do not fire', () {
+      final bridge = MockNativeBridge();
+      bridge.stubDefaults();
+      final disposableClient = MessageClient(bridge);
+
+      var callbackFired = false;
+      disposableClient.on('specific-type', (_) => callbackFired = true);
+
+      disposableClient.dispose();
+
+      bridge.simulateEvent(const NativeEvent(
+        service: 'message',
+        event: 'specific-type',
+        windowId: 'p1',
+        data: {},
+      ));
+
+      expect(callbackFired, isFalse);
+    });
+
+    test('after dispose, global callbacks do not fire', () {
+      final bridge = MockNativeBridge();
+      bridge.stubDefaults();
+      final disposableClient = MessageClient(bridge);
+
+      var globalFired = false;
+      disposableClient.onMessage((_) => globalFired = true);
+
+      disposableClient.dispose();
+
+      bridge.simulateEvent(const NativeEvent(
+        service: 'message',
+        event: 'any-type',
+        windowId: 'p1',
+        data: {'hello': 'world'},
+      ));
+
+      expect(globalFired, isFalse);
     });
   });
 }

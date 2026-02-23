@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show debugPrint;
+
 import '../bridge/service_client.dart';
 
 /// Pin levels for windows.
@@ -69,13 +71,21 @@ class ZOrderClient extends ServiceClient {
   /// Get current z-index.
   Future<int> getZIndex(String id) async {
     final result = await send<int>('getZIndex', windowId: id);
-    return result ?? 0;
+    if (result == null) {
+      debugPrint('[ZOrderClient] getZIndex($id) returned null — using fallback');
+      return 0;
+    }
+    return result;
   }
 
   /// Check if window is pinned.
   Future<bool> isPinned(String id) async {
     final result = await send<bool>('isPinned', windowId: id);
-    return result ?? false;
+    if (result == null) {
+      debugPrint('[ZOrderClient] isPinned($id) returned null — using fallback');
+      return false;
+    }
+    return result;
   }
 
   // ════════════════════════════════════════════════════════════════════════

@@ -147,12 +147,6 @@ part 'palette_setup.g.dart';
       hideOnEscape: true,
       draggable: true,
       keepAlive: true,
-      // focus: TakesFocus.no temporarily removed to test glass transparency.
-      // Hypothesis: non-key windows render .glassEffect() dimmed on macOS 26,
-      // and .environment(\.controlActiveState, .key) doesn't fully override it.
-      // alwaysOnTop disabled: .screenSaver window level prevents Liquid Glass
-      // from compositing with background, causing opaque dark rendering.
-      // TODO: Re-enable once we find a compatible pin level for glass.
     ),
 
     // Virtual Keyboard - sends key events to editor

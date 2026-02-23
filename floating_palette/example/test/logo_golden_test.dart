@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../lib/theme/brand.dart';
+import 'package:example/theme/brand.dart';
 
 void main() {
   testWidgets('FPLogo golden test', (WidgetTester tester) async {

@@ -1,3 +1,4 @@
+import '../bridge/native_bridge.dart' show NativeEventCallback;
 import '../bridge/service_client.dart';
 
 /// Message event from a palette.
@@ -48,9 +49,12 @@ class MessageClient extends ServiceClient {
   final _typeCallbacks = <String, List<void Function(PaletteMessage)>>{};
   final _globalCallbacks = <void Function(PaletteMessage)>[];
 
+  /// Stored reference to the event handler for proper cleanup on dispose.
+  late final NativeEventCallback _eventHandler;
+
   void _setupEventListener() {
     // Listen to all message events (service: message, event: the message type)
-    bridge.subscribe('message', (event) {
+    _eventHandler = (event) {
       final msg = PaletteMessage(
         paletteId: event.windowId ?? 'unknown',
         type: event.event,
@@ -69,7 +73,8 @@ class MessageClient extends ServiceClient {
           callback(msg);
         }
       }
-    });
+    };
+    bridge.subscribe(serviceName, _eventHandler);
   }
 
   /// Listen for all messages from palettes.
@@ -106,6 +111,7 @@ class MessageClient extends ServiceClient {
 
   @override
   void dispose() {
+    bridge.unsubscribe(serviceName, _eventHandler);
     _globalCallbacks.clear();
     _typeCallbacks.clear();
     super.dispose();

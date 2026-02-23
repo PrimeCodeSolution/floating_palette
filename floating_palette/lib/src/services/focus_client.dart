@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show debugPrint;
+
 import '../bridge/service_client.dart';
 import '../config/palette_behavior.dart';
 
@@ -32,7 +34,11 @@ class FocusClient extends ServiceClient {
   /// Check if window has focus.
   Future<bool> hasFocus(String id) async {
     final result = await send<bool>('isFocused', windowId: id);
-    return result ?? false;
+    if (result == null) {
+      debugPrint('[FocusClient] hasFocus($id) returned null — using fallback');
+      return false;
+    }
+    return result;
   }
 
   /// Activate the main app window.

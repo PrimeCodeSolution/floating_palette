@@ -57,6 +57,7 @@ class _NotionScreenState extends State<NotionScreen> {
 
     // Listen for slash menu trigger from editor palette
     Palettes.editor.onEvent<ShowSlashMenuEvent>((event) {
+      if (!mounted) return;
       if (event.caretX != null && event.caretY != null) {
         _showSlashMenuAtCaret(Offset(event.caretX!, event.caretY!));
       } else {
@@ -67,6 +68,7 @@ class _NotionScreenState extends State<NotionScreen> {
 
     // Listen for slash menu selection
     Palettes.slashMenu.onEvent<SlashMenuSelectEvent>((event) {
+      if (!mounted) return;
       debugPrint('[NotionScreen] SlashMenuSelectEvent: ${event.type}');
       // Update host's block type state (no sync - editor handles /query removal)
       final focusedBlockId =
@@ -83,12 +85,14 @@ class _NotionScreenState extends State<NotionScreen> {
 
     // Listen for slash menu filter updates
     Palettes.editor.onEvent<SlashMenuFilterEvent>((event) {
+      if (!mounted) return;
       // Forward filter to slash menu
       Palettes.slashMenu.sendEvent(event);
     });
 
     // Listen for slash menu cancel
     Palettes.editor.onEvent<SlashMenuCancelEvent>((_) {
+      if (!mounted) return;
       debugPrint('[NotionScreen] SlashMenuCancelEvent');
       Palettes.slashMenu.hide();
     });
@@ -99,6 +103,7 @@ class _NotionScreenState extends State<NotionScreen> {
 
     // Listen for style menu show request from editor palette
     Palettes.editor.onEvent<ShowStyleMenuEvent>((event) {
+      if (!mounted) return;
       if (event.selectionLeft != 0 ||
           event.selectionTop != 0 ||
           event.selectionRight != 0 ||
@@ -121,6 +126,7 @@ class _NotionScreenState extends State<NotionScreen> {
 
     // Listen for style menu hide request
     Palettes.editor.onEvent<HideStyleMenuEvent>((_) {
+      if (!mounted) return;
       _styleMenuDebounce?.cancel();
       _pendingSelectionRect = null;
       Palettes.styleMenu.hide();
@@ -128,6 +134,7 @@ class _NotionScreenState extends State<NotionScreen> {
 
     // Listen for style action from style menu
     Palettes.styleMenu.onEvent<StyleActionEvent>((event) {
+      if (!mounted) return;
       debugPrint('[NotionScreen] StyleActionEvent: ${event.style}');
       // Forward to editor to apply the style
       Palettes.editor.sendEvent(ApplyStyleEvent(style: event.style));
@@ -136,6 +143,7 @@ class _NotionScreenState extends State<NotionScreen> {
 
     // Forward style state from editor to style menu
     Palettes.editor.onEvent<StyleStateEvent>((event) {
+      if (!mounted) return;
       Palettes.styleMenu.sendEvent(event);
     });
 
@@ -145,11 +153,13 @@ class _NotionScreenState extends State<NotionScreen> {
 
     // Listen for block split request from editor
     Palettes.editor.onEvent<BlockSplitEvent>((event) {
+      if (!mounted) return;
       _handleBlockSplit(event.beforeText, event.afterText);
     });
 
     // Listen for merge with previous block request
     Palettes.editor.onEvent<BlockMergePrevEvent>((event) {
+      if (!mounted) return;
       _handleMergeWithPrevious(
         event.prevBlockText,
         event.currentBlockText,
@@ -159,6 +169,7 @@ class _NotionScreenState extends State<NotionScreen> {
 
     // Listen for merge with next block request
     Palettes.editor.onEvent<BlockMergeNextEvent>((event) {
+      if (!mounted) return;
       _handleMergeWithNext(
         event.currentBlockText,
         event.nextBlockText,
@@ -171,7 +182,10 @@ class _NotionScreenState extends State<NotionScreen> {
     // ════════════════════════════════════════════════════════════════
 
     // Listen for close request from editor palette
-    Palettes.editor.onEvent<CloseEditorEvent>((_) => _hideAll());
+    Palettes.editor.onEvent<CloseEditorEvent>((_) {
+      if (!mounted) return;
+      _hideAll();
+    });
 
     // ════════════════════════════════════════════════════════════════
     // Virtual Keyboard Handlers (typed events)
@@ -179,6 +193,7 @@ class _NotionScreenState extends State<NotionScreen> {
 
     // Show/hide keyboard on toggle event from editor
     Palettes.editor.onEvent<ToggleKeyboard>((_) async {
+      if (!mounted) return;
       if (Palettes.virtualKeyboard.isVisible) {
         await Palettes.virtualKeyboard.detach();
         Palettes.virtualKeyboard.sendEvent(
@@ -214,6 +229,7 @@ class _NotionScreenState extends State<NotionScreen> {
 
     // Forward key presses from virtual keyboard to editor
     Palettes.virtualKeyboard.onEvent<KeyboardKeyPressed>((event) {
+      if (!mounted) return;
       Palettes.editor.sendEvent(event);
     });
 

@@ -92,6 +92,12 @@ class ClickOutsideHandler {
 /// Multiple windows may report clickOutside for the same physical click.
 /// We use timestamp + position to identify the same click.
 class _ClickEvent {
+  /// Maximum time window (ms) to consider two events as the same physical click.
+  static const int _dedupTimeWindowMs = 50;
+
+  /// Maximum position drift (px) to consider two events as the same physical click.
+  static const double _dedupPositionThreshold = 5.0;
+
   final Offset position;
   final DateTime timestamp;
 
@@ -99,11 +105,12 @@ class _ClickEvent {
 
   /// Whether this click is likely the same as another.
   ///
-  /// Uses a small time window (50ms) and position tolerance (5px)
+  /// Uses a small time window and position tolerance
   /// to coalesce events from the same physical click.
   bool isSameClick(_ClickEvent other) {
     final timeDelta = timestamp.difference(other.timestamp).abs();
     final positionDelta = (position - other.position).distance;
-    return timeDelta.inMilliseconds < 50 && positionDelta < 5;
+    return timeDelta.inMilliseconds < _dedupTimeWindowMs &&
+        positionDelta < _dedupPositionThreshold;
   }
 }

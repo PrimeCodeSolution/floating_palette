@@ -138,8 +138,9 @@ final class WindowService {
             panel.minResizeHeight = minHeight
 
             panel.onFocusChanged = { [weak self] windowId, focused in
+                guard let self = self else { return }
                 // Send to main app channel
-                self?.eventSink?("focus", focused ? "focused" : "unfocused", windowId, [:])
+                self.eventSink?("focus", focused ? "focused" : "unfocused", windowId, [:])
 
                 // Also send directly to the palette's engine via selfChannel
                 if let window = WindowStore.shared.get(windowId) {

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' show pi;
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/painting.dart' show Alignment;
 
 import '../bridge/service_client.dart';
@@ -28,8 +29,8 @@ class TransformClient extends ServiceClient {
       'anchorX': anchor.x,
       'anchorY': anchor.y,
       'animate': animate,
-      if (durationMs != null) 'durationMs': durationMs,
-      if (curve != null) 'curve': curve,
+      'durationMs': ?durationMs,
+      'curve': ?curve,
     });
   }
 
@@ -51,8 +52,8 @@ class TransformClient extends ServiceClient {
       'anchorX': anchor.x,
       'anchorY': anchor.y,
       'animate': animate,
-      if (durationMs != null) 'durationMs': durationMs,
-      if (curve != null) 'curve': curve,
+      'durationMs': ?durationMs,
+      'curve': ?curve,
     });
   }
 
@@ -69,8 +70,8 @@ class TransformClient extends ServiceClient {
       'horizontal': horizontal,
       'vertical': vertical,
       'animate': animate,
-      if (durationMs != null) 'durationMs': durationMs,
-      if (curve != null) 'curve': curve,
+      'durationMs': ?durationMs,
+      'curve': ?curve,
     });
   }
 
@@ -78,28 +79,40 @@ class TransformClient extends ServiceClient {
   Future<void> reset(String id, {bool animate = false, int? durationMs}) async {
     await send<void>('reset', windowId: id, params: {
       'animate': animate,
-      if (durationMs != null) 'durationMs': durationMs,
+      'durationMs': ?durationMs,
     });
   }
 
   /// Get current scale.
   Future<double> getScale(String id) async {
     final result = await send<double>('getScale', windowId: id);
-    return result ?? 1.0;
+    if (result == null) {
+      debugPrint('[TransformClient] getScale($id) returned null — using fallback');
+      return 1.0;
+    }
+    return result;
   }
 
   /// Get current rotation.
   Future<double> getRotation(String id) async {
     final result = await send<double>('getRotation', windowId: id);
-    return result ?? 0.0;
+    if (result == null) {
+      debugPrint('[TransformClient] getRotation($id) returned null — using fallback');
+      return 0.0;
+    }
+    return result;
   }
 
   /// Get flip state.
   Future<({bool horizontal, bool vertical})> getFlip(String id) async {
     final result = await sendForMap('getFlip', windowId: id);
+    if (result == null) {
+      debugPrint('[TransformClient] getFlip($id) returned null — using fallback');
+      return (horizontal: false, vertical: false);
+    }
     return (
-      horizontal: result?['horizontal'] as bool? ?? false,
-      vertical: result?['vertical'] as bool? ?? false,
+      horizontal: result['horizontal'] as bool? ?? false,
+      vertical: result['vertical'] as bool? ?? false,
     );
   }
 }

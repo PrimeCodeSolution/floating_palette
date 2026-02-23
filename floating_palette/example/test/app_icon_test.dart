@@ -1,8 +1,7 @@
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../lib/theme/brand.dart';
+import 'package:example/theme/brand.dart';
 
 /// Generates macOS app icons at all required sizes.
 /// Run with: flutter test test/app_icon_test.dart --update-goldens

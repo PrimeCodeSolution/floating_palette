@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show debugPrint;
+
 import '../bridge/service_client.dart';
 import '../config/config.dart';
 
@@ -46,8 +48,11 @@ class WindowClient extends ServiceClient {
   /// Check if a window exists.
   Future<bool> exists(String id) async {
     final result = await send<bool>('exists', windowId: id);
-    assert(result != null, '[WindowClient] exists($id) returned null');
-    return result ?? false;
+    if (result == null) {
+      debugPrint('[WindowClient] exists($id) returned null — using fallback');
+      return false;
+    }
+    return result;
   }
 
   /// Set the Flutter entry point for a window.

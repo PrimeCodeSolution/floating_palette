@@ -42,7 +42,7 @@ final class DragCoordinator {
             return
         }
 
-        guard let event = NSApp.currentEvent else {
+        guard NSApp.currentEvent != nil else {
             os_log("startDrag failed: no current event", log: Log.frame, type: .error)
             return
         }

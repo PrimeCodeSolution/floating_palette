@@ -290,9 +290,6 @@ class _EditorPaletteState extends State<EditorPalette> {
   void _onSelectionChanged() {
     final selection = _controller.selection;
     final isCollapsed = selection.isCollapsed;
-    debugPrint(
-      '[EditorPalette] selection: ${selection.baseOffset}-${selection.extentOffset} collapsed=$isCollapsed',
-    );
 
     if (!isCollapsed && !_hadSelection) {
       _showStyleMenu();
@@ -530,23 +527,26 @@ class _EditorPaletteState extends State<EditorPalette> {
       final cursorPos = _controller.selection.baseOffset;
 
       // Apply block format based on type
+      // Use formatSelection for block attributes — it applies to the
+      // current line's newline character, unlike formatText(offset, 0, ...)
+      // which is a no-op for block attributes.
       switch (type) {
         case 'heading1':
-          _controller.formatText(cursorPos, 0, Attribute.h1);
+          _controller.formatSelection(Attribute.h1);
         case 'heading2':
-          _controller.formatText(cursorPos, 0, Attribute.h2);
+          _controller.formatSelection(Attribute.h2);
         case 'heading3':
-          _controller.formatText(cursorPos, 0, Attribute.h3);
+          _controller.formatSelection(Attribute.h3);
         case 'bullet':
-          _controller.formatText(cursorPos, 0, Attribute.ul);
+          _controller.formatSelection(Attribute.ul);
         case 'numbered':
-          _controller.formatText(cursorPos, 0, Attribute.ol);
+          _controller.formatSelection(Attribute.ol);
         case 'todo':
-          _controller.formatText(cursorPos, 0, Attribute.unchecked);
+          _controller.formatSelection(Attribute.unchecked);
         case 'quote':
-          _controller.formatText(cursorPos, 0, Attribute.blockQuote);
+          _controller.formatSelection(Attribute.blockQuote);
         case 'code':
-          _controller.formatText(cursorPos, 0, Attribute.codeBlock);
+          _controller.formatSelection(Attribute.codeBlock);
         case 'divider':
           // Insert a horizontal rule
           _controller.replaceText(cursorPos, 0, '\n---\n', TextSelection.collapsed(offset: cursorPos + 5));
@@ -786,10 +786,12 @@ class _EditorPaletteState extends State<EditorPalette> {
       }
       // Enter: notify host about block split, then insert newline
       _requestBlockSplit();
-      // Set flag to skip newline formatting reset
+      // Skip block-level formatting reset (host handles heading→paragraph etc.)
       _handlingBlockSplit = true;
       // Insert the newline ourselves since returning ignored doesn't work
       _insertNewlineAtCursor();
+      // Reset inline styles so bold/italic don't carry to the new block
+      _resetInlineStyles();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _handlingBlockSplit = false;
       });
@@ -1101,13 +1103,7 @@ class _EditorPaletteState extends State<EditorPalette> {
       '[EditorPalette] apply defaults at offset=$targetOffset docLength=$docLength',
     );
 
-    if (_controller.selection.isCollapsed) {
-      _controller.formatSelection(Attribute.clone(Attribute.bold, null));
-      _controller.formatSelection(Attribute.clone(Attribute.italic, null));
-      _controller.formatSelection(Attribute.clone(Attribute.underline, null));
-      _controller.formatSelection(Attribute.clone(Attribute.strikeThrough, null));
-      _controller.formatSelection(Attribute.clone(Attribute.inlineCode, null));
-    }
+    _resetInlineStyles();
     _controller.formatText(targetOffset, 1, Attribute.clone(Attribute.header, null));
     _controller.formatText(targetOffset, 1, Attribute.clone(Attribute.list, null));
     _controller.formatText(targetOffset, 1, Attribute.clone(Attribute.blockQuote, null));
@@ -1117,6 +1113,17 @@ class _EditorPaletteState extends State<EditorPalette> {
     _controller.formatText(targetOffset, 1, Attribute.clone(Attribute.direction, null));
     _controller.formatText(targetOffset, 1, LineHeightAttribute.lineHeightOneAndHalf);
     _sendStyleState();
+  }
+
+  /// Reset inline styles (bold, italic, etc.) at the current cursor position.
+  void _resetInlineStyles() {
+    if (_controller.selection.isCollapsed) {
+      _controller.formatSelection(Attribute.clone(Attribute.bold, null));
+      _controller.formatSelection(Attribute.clone(Attribute.italic, null));
+      _controller.formatSelection(Attribute.clone(Attribute.underline, null));
+      _controller.formatSelection(Attribute.clone(Attribute.strikeThrough, null));
+      _controller.formatSelection(Attribute.clone(Attribute.inlineCode, null));
+    }
   }
 
   bool _isShiftPressed() {

@@ -195,8 +195,9 @@ class InputManager {
 
     for (final id in toHide) {
       debugPrint('[InputManager] Hiding $id due to exclusive group ${group.name}');
-      // Request dismiss via callback (same mechanism as click-outside)
-      // Don't activate show guard - this is programmatic, not click-based
+      // Fire-and-forget: requestDismiss triggers each controller's hide() which
+      // internally uses _serialized() to prevent its own races. Cross-controller
+      // ordering isn't critical here — each dismiss is independent.
       _dismissCoordinator.requestDismiss(id);
     }
   }
