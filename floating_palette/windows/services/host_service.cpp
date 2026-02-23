@@ -39,10 +39,10 @@ void HostService::GetProtocolVersion(
 void HostService::GetCapabilities(
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
   result->Success(flutter::EncodableValue(flutter::EncodableMap{
-      {flutter::EncodableValue("blur"), flutter::EncodableValue(false)},
+      {flutter::EncodableValue("blur"), flutter::EncodableValue(true)},
       {flutter::EncodableValue("transform"), flutter::EncodableValue(false)},
       {flutter::EncodableValue("globalHotkeys"),
-       flutter::EncodableValue(false)},
+       flutter::EncodableValue(true)},
       {flutter::EncodableValue("glassEffect"),
        flutter::EncodableValue(false)},
       {flutter::EncodableValue("multiMonitor"),
@@ -72,8 +72,40 @@ void HostService::GetServiceVersion(
 
 void HostService::GetSnapshot(
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  // TODO: Return snapshot of all palette windows for hot restart recovery
-  result->Success(flutter::EncodableValue(flutter::EncodableList{}));
+  auto all = WindowStore::Instance().All();
+  flutter::EncodableList snapshot;
+
+  for (auto& [id, window] : all) {
+    if (!window || !window->hwnd || window->is_destroyed) continue;
+
+    RECT rect;
+    bool has_rect = GetWindowRect(window->hwnd, &rect) != FALSE;
+
+    bool visible = ::IsWindowVisible(window->hwnd) != FALSE;
+    bool focused = (GetForegroundWindow() == window->hwnd);
+
+    flutter::EncodableMap entry{
+        {flutter::EncodableValue("id"), flutter::EncodableValue(id)},
+        {flutter::EncodableValue("visible"), flutter::EncodableValue(visible)},
+        {flutter::EncodableValue("x"),
+         flutter::EncodableValue(
+             has_rect ? static_cast<double>(rect.left) : 0.0)},
+        {flutter::EncodableValue("y"),
+         flutter::EncodableValue(
+             has_rect ? static_cast<double>(rect.top) : 0.0)},
+        {flutter::EncodableValue("width"),
+         flutter::EncodableValue(
+             has_rect ? static_cast<double>(rect.right - rect.left) : 0.0)},
+        {flutter::EncodableValue("height"),
+         flutter::EncodableValue(
+             has_rect ? static_cast<double>(rect.bottom - rect.top) : 0.0)},
+        {flutter::EncodableValue("focused"),
+         flutter::EncodableValue(focused)},
+    };
+    snapshot.push_back(flutter::EncodableValue(entry));
+  }
+
+  result->Success(flutter::EncodableValue(snapshot));
 }
 
 void HostService::Ping(

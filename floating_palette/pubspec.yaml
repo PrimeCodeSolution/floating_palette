@@ -28,5 +28,5 @@ flutter:
     platforms:
       macos:
         pluginClass: FloatingPalettePlugin
-      # windows:
-      #   pluginClass: FloatingPalettePluginCApi
+      windows:
+        pluginClass: FloatingPalettePluginCApi

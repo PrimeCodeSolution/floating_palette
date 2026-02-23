@@ -5,11 +5,26 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #include "../coordinators/drag_coordinator.h"
 #include "../core/window_store.h"
 
 namespace floating_palette {
+
+struct SnapBinding {
+  std::string follower_id;
+  std::string target_id;
+  std::string edge;       // "top", "bottom", "left", "right"
+  double offset_x = 0;
+  double offset_y = 0;
+};
+
+struct AutoSnapConfig {
+  double proximity = 20.0;
+  bool enabled = false;
+  std::string preferred_edge = "right";
+};
 
 class SnapService : public DragCoordinatorDelegate {
  public:
@@ -22,6 +37,7 @@ class SnapService : public DragCoordinatorDelegate {
   // Called by VisibilityService when windows show/hide
   void OnWindowShown(const std::string& id);
   void OnWindowHidden(const std::string& id);
+  void OnWindowDestroyed(const std::string& id);
 
   // DragCoordinatorDelegate
   void DragBegan(const std::string& id) override;
@@ -30,6 +46,11 @@ class SnapService : public DragCoordinatorDelegate {
 
  private:
   EventSink event_sink_;
+
+  std::unordered_map<std::string, SnapBinding> bindings_;
+  std::unordered_map<std::string, AutoSnapConfig> auto_snap_configs_;
+
+  void PositionFollower(const SnapBinding& binding);
 
   void Snap(const std::string* window_id,
             const flutter::EncodableMap& params,

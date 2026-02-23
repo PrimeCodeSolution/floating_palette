@@ -84,6 +84,7 @@ void FloatingPalettePlugin::InitializeServices() {
 
   focus_service_ = std::make_unique<FocusService>();
   focus_service_->SetEventSink(event_sink);
+  focus_service_->SetMainHwnd(registrar_->GetView()->GetNativeWindow());
 
   zorder_service_ = std::make_unique<ZOrderService>();
   zorder_service_->SetEventSink(event_sink);
@@ -93,6 +94,7 @@ void FloatingPalettePlugin::InitializeServices() {
 
   screen_service_ = std::make_unique<ScreenService>();
   screen_service_->SetEventSink(event_sink);
+  screen_service_->SetMainHwnd(registrar_->GetView()->GetNativeWindow());
 
   background_capture_service_ =
       std::make_unique<BackgroundCaptureService>(registrar_);
@@ -118,6 +120,7 @@ void FloatingPalettePlugin::InitializeServices() {
   window_service_->SetSnapService(snap_service_.get());
   window_service_->SetDragCoordinator(drag_coordinator_.get());
   window_service_->SetInputService(input_service_.get());
+  window_service_->SetVisibilityService(visibility_service_.get());
 
   frame_service_->SetSnapService(snap_service_.get());
   frame_service_->SetDragCoordinator(drag_coordinator_.get());

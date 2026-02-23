@@ -7,12 +7,15 @@
 #include "generated_plugin_registrant.h"
 
 #include <file_selector_windows/file_selector_windows.h>
+#include <floating_palette/floating_palette_plugin_c_api.h>
 #include <hotkey_manager_windows/hotkey_manager_windows_plugin_c_api.h>
 #include <url_launcher_windows/url_launcher_windows.h>
 
 void RegisterPlugins(flutter::PluginRegistry* registry) {
   FileSelectorWindowsRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FileSelectorWindows"));
+  FloatingPalettePluginCApiRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("FloatingPalettePluginCApi"));
   HotkeyManagerWindowsPluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("HotkeyManagerWindowsPluginCApi"));
   UrlLauncherWindowsRegisterWithRegistrar(
