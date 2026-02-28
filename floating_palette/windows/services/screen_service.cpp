@@ -1,5 +1,6 @@
 #include "screen_service.h"
 
+#include "../core/dpi_helper.h"
 #include "../core/logger.h"
 #include "../core/monitor_helper.h"
 #include "../core/param_helpers.h"
@@ -35,29 +36,30 @@ void ScreenService::GetScreens(
 
   for (int i = 0; i < static_cast<int>(monitors.size()); i++) {
     const auto& m = monitors[i];
+    double sf = m.scale_factor;
     flutter::EncodableMap frame{
         {flutter::EncodableValue("x"),
-         flutter::EncodableValue(static_cast<double>(m.bounds.left))},
+         flutter::EncodableValue(PhysicalToLogical(m.bounds.left, sf))},
         {flutter::EncodableValue("y"),
-         flutter::EncodableValue(static_cast<double>(m.bounds.top))},
+         flutter::EncodableValue(PhysicalToLogical(m.bounds.top, sf))},
         {flutter::EncodableValue("width"),
          flutter::EncodableValue(
-             static_cast<double>(m.bounds.right - m.bounds.left))},
+             PhysicalToLogical(m.bounds.right - m.bounds.left, sf))},
         {flutter::EncodableValue("height"),
          flutter::EncodableValue(
-             static_cast<double>(m.bounds.bottom - m.bounds.top))},
+             PhysicalToLogical(m.bounds.bottom - m.bounds.top, sf))},
     };
     flutter::EncodableMap visible_frame{
         {flutter::EncodableValue("x"),
-         flutter::EncodableValue(static_cast<double>(m.work_area.left))},
+         flutter::EncodableValue(PhysicalToLogical(m.work_area.left, sf))},
         {flutter::EncodableValue("y"),
-         flutter::EncodableValue(static_cast<double>(m.work_area.top))},
+         flutter::EncodableValue(PhysicalToLogical(m.work_area.top, sf))},
         {flutter::EncodableValue("width"),
          flutter::EncodableValue(
-             static_cast<double>(m.work_area.right - m.work_area.left))},
+             PhysicalToLogical(m.work_area.right - m.work_area.left, sf))},
         {flutter::EncodableValue("height"),
          flutter::EncodableValue(
-             static_cast<double>(m.work_area.bottom - m.work_area.top))},
+             PhysicalToLogical(m.work_area.bottom - m.work_area.top, sf))},
     };
     flutter::EncodableMap screen{
         {flutter::EncodableValue("id"), flutter::EncodableValue(i)},
@@ -152,11 +154,12 @@ void ScreenService::GetCursorPosition(
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
   POINT pt;
   if (GetCursorPos(&pt)) {
+    double scale = GetScaleFactorForPoint(pt);
     result->Success(flutter::EncodableValue(flutter::EncodableMap{
         {flutter::EncodableValue("x"),
-         flutter::EncodableValue(static_cast<double>(pt.x))},
+         flutter::EncodableValue(PhysicalToLogical(pt.x, scale))},
         {flutter::EncodableValue("y"),
-         flutter::EncodableValue(static_cast<double>(pt.y))},
+         flutter::EncodableValue(PhysicalToLogical(pt.y, scale))},
     }));
   } else {
     result->Success(flutter::EncodableValue(flutter::EncodableMap{
@@ -190,16 +193,17 @@ void ScreenService::GetActiveAppBounds(
     return;
   }
 
+  double scale = GetScaleFactorForHwnd(fg);
   result->Success(flutter::EncodableValue(flutter::EncodableMap{
       {flutter::EncodableValue("x"),
-       flutter::EncodableValue(static_cast<double>(rect.left))},
+       flutter::EncodableValue(PhysicalToLogical(rect.left, scale))},
       {flutter::EncodableValue("y"),
-       flutter::EncodableValue(static_cast<double>(rect.top))},
+       flutter::EncodableValue(PhysicalToLogical(rect.top, scale))},
       {flutter::EncodableValue("width"),
-       flutter::EncodableValue(static_cast<double>(rect.right - rect.left))},
+       flutter::EncodableValue(PhysicalToLogical(rect.right - rect.left, scale))},
       {flutter::EncodableValue("height"),
        flutter::EncodableValue(
-           static_cast<double>(rect.bottom - rect.top))},
+           PhysicalToLogical(rect.bottom - rect.top, scale))},
   }));
 }
 

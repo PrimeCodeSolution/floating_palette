@@ -1,5 +1,6 @@
 #include "snap_service.h"
 
+#include "../core/dpi_helper.h"
 #include "../core/logger.h"
 #include "../core/param_helpers.h"
 
@@ -155,7 +156,9 @@ SnapService::SnapPosition SnapService::CalculateSnapPosition(
   int tw = target_rect.right - target_rect.left;
   int th = target_rect.bottom - target_rect.top;
 
-  int gap = static_cast<int>(binding.gap);
+  // Gap comes from Dart (logical pixels) — convert to physical
+  double scale = GetScaleFactorForHwnd(target->hwnd);
+  int gap = LogicalToPhysical(binding.gap, scale);
   int new_x = 0, new_y = 0;
 
   // Calculate position based on edge pair (matching macOS calculateSnapPosition).
@@ -303,6 +306,10 @@ void SnapService::CheckProximity(const std::string& dragged_id,
     RECT target_rect;
     GetWindowRect(target_window->hwnd, &target_rect);
 
+    // Scale proximity threshold from logical (Dart) to physical (Win32)
+    double prox_scale = GetScaleFactorForHwnd(target_window->hwnd);
+    double physical_threshold = drag_config.proximity_threshold * prox_scale;
+
     // Check each edge combination
     for (const auto& drag_edge : drag_config.can_snap_from) {
       for (const auto& target_edge : target_config.accepts_snap_on) {
@@ -310,7 +317,7 @@ void SnapService::CheckProximity(const std::string& dragged_id,
 
         double dist = CalculateEdgeDistance(frame, drag_edge,
                                             target_rect, target_edge);
-        if (dist < drag_config.proximity_threshold) {
+        if (dist < physical_threshold) {
           if (!best || dist < best->distance) {
             best = {target_id, drag_edge, target_edge, dist};
           }
@@ -504,9 +511,13 @@ void SnapService::GetSnapDistance(
   GetWindowRect(follower->hwnd, &fr);
 
   auto snap_pos = CalculateSnapPosition(it->second);
-  double dist = std::hypot(
+  double physical_dist = std::hypot(
       static_cast<double>(snap_pos.x - fr.left),
       static_cast<double>(snap_pos.y - fr.top));
+
+  // Convert physical distance to logical for Dart
+  double scale = GetScaleFactorForHwnd(follower->hwnd);
+  double dist = PhysicalToLogical(physical_dist, scale);
 
   result->Success(flutter::EncodableValue(dist));
 }

@@ -2,6 +2,7 @@
 
 #include <flutter/method_result_functions.h>
 
+#include "../core/dpi_helper.h"
 #include "../core/logger.h"
 #include "../core/param_helpers.h"
 
@@ -87,18 +88,23 @@ void AnimationService::ApplyValue(const std::string& window_id,
     BYTE alpha = static_cast<BYTE>(value * 255.0);
     SetLayeredWindowAttributes(window->hwnd, RGB(1, 0, 1), alpha, LWA_COLORKEY | LWA_ALPHA);
   } else {
+    // value is in logical pixels; convert to physical for SetWindowPos
+    double scale = GetScaleFactorForHwnd(window->hwnd);
+
     RECT rect;
     GetWindowRect(window->hwnd, &rect);
 
+    // Current position/size are already physical
     int x = rect.left;
     int y = rect.top;
     int w = rect.right - rect.left;
     int h = rect.bottom - rect.top;
 
-    if (property == "x") x = static_cast<int>(value);
-    else if (property == "y") y = static_cast<int>(value);
-    else if (property == "width") w = static_cast<int>(value);
-    else if (property == "height") h = static_cast<int>(value);
+    // Convert the animated logical value to physical
+    if (property == "x") x = LogicalToPhysical(value, scale);
+    else if (property == "y") y = LogicalToPhysical(value, scale);
+    else if (property == "width") w = LogicalToPhysical(value, scale);
+    else if (property == "height") h = LogicalToPhysical(value, scale);
 
     UINT flags = SWP_NOZORDER | SWP_NOACTIVATE;
     if (property == "x" || property == "y") flags |= SWP_NOSIZE;
@@ -177,15 +183,16 @@ void AnimationService::Animate(
   double duration = GetDouble(params, "duration", 300);
   std::string easing = GetString(params, "easing", "easeInOut");
 
-  // Get current value as "from"
+  // Get current value as "from" (convert physical to logical for Dart consistency)
   double from_value = 0;
   RECT rect;
   GetWindowRect(window->hwnd, &rect);
+  double scale = GetScaleFactorForHwnd(window->hwnd);
 
-  if (property == "x") from_value = rect.left;
-  else if (property == "y") from_value = rect.top;
-  else if (property == "width") from_value = rect.right - rect.left;
-  else if (property == "height") from_value = rect.bottom - rect.top;
+  if (property == "x") from_value = PhysicalToLogical(rect.left, scale);
+  else if (property == "y") from_value = PhysicalToLogical(rect.top, scale);
+  else if (property == "width") from_value = PhysicalToLogical(rect.right - rect.left, scale);
+  else if (property == "height") from_value = PhysicalToLogical(rect.bottom - rect.top, scale);
   else if (property == "opacity") from_value = window->opacity;
 
   // Allow explicit "from" override

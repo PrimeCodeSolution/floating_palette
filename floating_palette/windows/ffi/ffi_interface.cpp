@@ -2,6 +2,7 @@
 
 #include <psapi.h>
 
+#include "../core/dpi_helper.h"
 #include "../core/logger.h"
 #include "../core/monitor_helper.h"
 #include "../core/window_store.h"
@@ -43,7 +44,7 @@ void FloatingPalette_ResizeWindow(const char* window_id, double width,
     return;
   }
 
-  // Store desired size immediately
+  // Store desired logical size
   window->width = width;
   window->height = height;
 
@@ -51,8 +52,9 @@ void FloatingPalette_ResizeWindow(const char* window_id, double width,
   // On Windows, SetWindowPos sends WM_SIZE synchronously, which triggers
   // _updateWindowMetrics -> markNeedsLayout while still inside performLayout.
   // PostMessage defers to the next message loop iteration.
-  int w = static_cast<int>(width);
-  int h = static_cast<int>(height);
+  double scale = floating_palette::GetScaleFactorForHwnd(window->hwnd);
+  int w = floating_palette::LogicalToPhysical(width, scale);
+  int h = floating_palette::LogicalToPhysical(height, scale);
   PostMessage(window->hwnd, WM_FP_DEFERRED_RESIZE, static_cast<WPARAM>(w),
               static_cast<LPARAM>(h));
 
@@ -80,10 +82,11 @@ bool FloatingPalette_GetWindowFrame(const char* window_id, double* out_x,
   RECT rect;
   if (!GetWindowRect(window->hwnd, &rect)) return false;
 
-  if (out_x) *out_x = static_cast<double>(rect.left);
-  if (out_y) *out_y = static_cast<double>(rect.top);
-  if (out_width) *out_width = static_cast<double>(rect.right - rect.left);
-  if (out_height) *out_height = static_cast<double>(rect.bottom - rect.top);
+  double scale = floating_palette::GetScaleFactorForHwnd(window->hwnd);
+  if (out_x) *out_x = floating_palette::PhysicalToLogical(rect.left, scale);
+  if (out_y) *out_y = floating_palette::PhysicalToLogical(rect.top, scale);
+  if (out_width) *out_width = floating_palette::PhysicalToLogical(rect.right - rect.left, scale);
+  if (out_height) *out_height = floating_palette::PhysicalToLogical(rect.bottom - rect.top, scale);
   return true;
 }
 
@@ -103,8 +106,9 @@ bool FloatingPalette_IsWindowVisible(const char* window_id) {
 void FloatingPalette_GetCursorPosition(double* out_x, double* out_y) {
   POINT pt;
   if (GetCursorPos(&pt)) {
-    if (out_x) *out_x = static_cast<double>(pt.x);
-    if (out_y) *out_y = static_cast<double>(pt.y);
+    double scale = floating_palette::GetScaleFactorForPoint(pt);
+    if (out_x) *out_x = floating_palette::PhysicalToLogical(pt.x, scale);
+    if (out_y) *out_y = floating_palette::PhysicalToLogical(pt.y, scale);
   } else {
     if (out_x) *out_x = 0;
     if (out_y) *out_y = 0;
@@ -141,12 +145,13 @@ bool FloatingPalette_GetScreenBounds(int32_t screen_index, double* out_x,
     return false;
   }
 
-  if (out_x) *out_x = static_cast<double>(info.bounds.left);
-  if (out_y) *out_y = static_cast<double>(info.bounds.top);
+  double sf = info.scale_factor;
+  if (out_x) *out_x = floating_palette::PhysicalToLogical(info.bounds.left, sf);
+  if (out_y) *out_y = floating_palette::PhysicalToLogical(info.bounds.top, sf);
   if (out_width)
-    *out_width = static_cast<double>(info.bounds.right - info.bounds.left);
+    *out_width = floating_palette::PhysicalToLogical(info.bounds.right - info.bounds.left, sf);
   if (out_height)
-    *out_height = static_cast<double>(info.bounds.bottom - info.bounds.top);
+    *out_height = floating_palette::PhysicalToLogical(info.bounds.bottom - info.bounds.top, sf);
   return true;
 }
 
@@ -163,14 +168,15 @@ bool FloatingPalette_GetScreenVisibleBounds(int32_t screen_index,
     return false;
   }
 
-  if (out_x) *out_x = static_cast<double>(info.work_area.left);
-  if (out_y) *out_y = static_cast<double>(info.work_area.top);
+  double sf = info.scale_factor;
+  if (out_x) *out_x = floating_palette::PhysicalToLogical(info.work_area.left, sf);
+  if (out_y) *out_y = floating_palette::PhysicalToLogical(info.work_area.top, sf);
   if (out_width)
     *out_width =
-        static_cast<double>(info.work_area.right - info.work_area.left);
+        floating_palette::PhysicalToLogical(info.work_area.right - info.work_area.left, sf);
   if (out_height)
     *out_height =
-        static_cast<double>(info.work_area.bottom - info.work_area.top);
+        floating_palette::PhysicalToLogical(info.work_area.bottom - info.work_area.top, sf);
   return true;
 }
 
@@ -193,10 +199,11 @@ bool FloatingPalette_GetActiveAppBounds(double* out_x, double* out_y,
   RECT rect;
   if (!GetWindowRect(fg, &rect)) return false;
 
-  if (out_x) *out_x = static_cast<double>(rect.left);
-  if (out_y) *out_y = static_cast<double>(rect.top);
-  if (out_width) *out_width = static_cast<double>(rect.right - rect.left);
-  if (out_height) *out_height = static_cast<double>(rect.bottom - rect.top);
+  double scale = floating_palette::GetScaleFactorForHwnd(fg);
+  if (out_x) *out_x = floating_palette::PhysicalToLogical(rect.left, scale);
+  if (out_y) *out_y = floating_palette::PhysicalToLogical(rect.top, scale);
+  if (out_width) *out_width = floating_palette::PhysicalToLogical(rect.right - rect.left, scale);
+  if (out_height) *out_height = floating_palette::PhysicalToLogical(rect.bottom - rect.top, scale);
   return true;
 }
 

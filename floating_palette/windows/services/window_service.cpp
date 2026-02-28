@@ -2,6 +2,7 @@
 
 #include <flutter_windows.h>
 
+#include "../core/dpi_helper.h"
 #include "../core/logger.h"
 #include "../core/param_helpers.h"
 #include "input_service.h"
@@ -185,8 +186,10 @@ void WindowService::Create(
   bool keep_alive = GetBool(params, "keepAlive", false);
   int bg_color = GetInt(params, "backgroundColor", 0);
 
-  int w = static_cast<int>(width);
-  int h = static_cast<int>(height);
+  // Scale to physical pixels for window creation (no HWND yet, use primary)
+  double create_scale = GetPrimaryScaleFactor();
+  int w = LogicalToPhysical(width, create_scale);
+  int h = LogicalToPhysical(height, create_scale);
 
   // Create the palette HWND (off-screen initially, hidden)
   HWND hwnd = CreateWindowExW(
@@ -264,8 +267,9 @@ void WindowService::SetupEngine(const std::string& window_id) {
   }
 
   HWND hwnd = palette->hwnd;
-  int w = static_cast<int>(palette->width);
-  int h = static_cast<int>(palette->height);
+  double engine_scale = GetScaleFactorForHwnd(hwnd);
+  int w = LogicalToPhysical(palette->width, engine_scale);
+  int h = LogicalToPhysical(palette->height, engine_scale);
 
   // Get paths from the host engine's executable directory
   wchar_t exe_path[MAX_PATH] = {};

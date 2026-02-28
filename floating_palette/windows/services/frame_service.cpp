@@ -1,6 +1,7 @@
 #include "frame_service.h"
 
 #include "../coordinators/drag_coordinator.h"
+#include "../core/dpi_helper.h"
 #include "../core/logger.h"
 #include "../core/param_helpers.h"
 #include "snap_service.h"
@@ -57,14 +58,17 @@ void FrameService::SetPosition(
                        std::to_string(static_cast<int>(y)) +
                        " anchor=" + anchor);
 
-  // Get current window size for anchor calculation
+  double scale = GetScaleFactorForHwnd(window->hwnd);
+
+  // Get current window size for anchor calculation (physical pixels)
   RECT rect;
   GetWindowRect(window->hwnd, &rect);
   int w = rect.right - rect.left;
   int h = rect.bottom - rect.top;
 
-  int ix = static_cast<int>(x);
-  int iy = static_cast<int>(y);
+  // Convert logical position to physical
+  int ix = LogicalToPhysical(x, scale);
+  int iy = LogicalToPhysical(y, scale);
 
   // Adjust for anchor point
   if (anchor == "center") {
@@ -118,8 +122,10 @@ void FrameService::SetSize(
 
   double w = GetDouble(params, "width", window->width);
   double h = GetDouble(params, "height", window->height);
-  int iw = static_cast<int>(w);
-  int ih = static_cast<int>(h);
+
+  double scale = GetScaleFactorForHwnd(window->hwnd);
+  int iw = LogicalToPhysical(w, scale);
+  int ih = LogicalToPhysical(h, scale);
 
   FP_LOG("Frame", "SetSize [" + *window_id + "] " +
                        std::to_string(iw) + "x" + std::to_string(ih));
@@ -134,6 +140,7 @@ void FrameService::SetSize(
                  SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
   }
 
+  // Store logical size
   window->width = w;
   window->height = h;
 
@@ -159,10 +166,12 @@ void FrameService::SetBounds(
   double y = GetDouble(params, "y", 0);
   double w = GetDouble(params, "width", window->width);
   double h = GetDouble(params, "height", window->height);
-  int ix = static_cast<int>(x);
-  int iy = static_cast<int>(y);
-  int iw = static_cast<int>(w);
-  int ih = static_cast<int>(h);
+
+  double scale = GetScaleFactorForHwnd(window->hwnd);
+  int ix = LogicalToPhysical(x, scale);
+  int iy = LogicalToPhysical(y, scale);
+  int iw = LogicalToPhysical(w, scale);
+  int ih = LogicalToPhysical(h, scale);
 
   SetWindowPos(window->hwnd, NULL, ix, iy, iw, ih,
                SWP_NOZORDER | SWP_NOACTIVATE);
@@ -174,6 +183,7 @@ void FrameService::SetBounds(
                  SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
   }
 
+  // Store logical size
   window->width = w;
   window->height = h;
 
@@ -202,11 +212,12 @@ void FrameService::GetPosition(
 
   RECT rect;
   GetWindowRect(window->hwnd, &rect);
+  double scale = GetScaleFactorForHwnd(window->hwnd);
   result->Success(flutter::EncodableValue(flutter::EncodableMap{
       {flutter::EncodableValue("x"),
-       flutter::EncodableValue(static_cast<double>(rect.left))},
+       flutter::EncodableValue(PhysicalToLogical(rect.left, scale))},
       {flutter::EncodableValue("y"),
-       flutter::EncodableValue(static_cast<double>(rect.top))},
+       flutter::EncodableValue(PhysicalToLogical(rect.top, scale))},
   }));
 }
 
@@ -232,11 +243,12 @@ void FrameService::GetSize(
 
   RECT rect;
   GetWindowRect(window->hwnd, &rect);
+  double scale = GetScaleFactorForHwnd(window->hwnd);
   result->Success(flutter::EncodableValue(flutter::EncodableMap{
       {flutter::EncodableValue("width"),
-       flutter::EncodableValue(static_cast<double>(rect.right - rect.left))},
+       flutter::EncodableValue(PhysicalToLogical(rect.right - rect.left, scale))},
       {flutter::EncodableValue("height"),
-       flutter::EncodableValue(static_cast<double>(rect.bottom - rect.top))},
+       flutter::EncodableValue(PhysicalToLogical(rect.bottom - rect.top, scale))},
   }));
 }
 
@@ -266,15 +278,16 @@ void FrameService::GetBounds(
 
   RECT rect;
   GetWindowRect(window->hwnd, &rect);
+  double scale = GetScaleFactorForHwnd(window->hwnd);
   result->Success(flutter::EncodableValue(flutter::EncodableMap{
       {flutter::EncodableValue("x"),
-       flutter::EncodableValue(static_cast<double>(rect.left))},
+       flutter::EncodableValue(PhysicalToLogical(rect.left, scale))},
       {flutter::EncodableValue("y"),
-       flutter::EncodableValue(static_cast<double>(rect.top))},
+       flutter::EncodableValue(PhysicalToLogical(rect.top, scale))},
       {flutter::EncodableValue("width"),
-       flutter::EncodableValue(static_cast<double>(rect.right - rect.left))},
+       flutter::EncodableValue(PhysicalToLogical(rect.right - rect.left, scale))},
       {flutter::EncodableValue("height"),
-       flutter::EncodableValue(static_cast<double>(rect.bottom - rect.top))},
+       flutter::EncodableValue(PhysicalToLogical(rect.bottom - rect.top, scale))},
   }));
 }
 

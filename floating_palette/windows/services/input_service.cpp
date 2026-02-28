@@ -1,5 +1,6 @@
 #include "input_service.h"
 
+#include "../core/dpi_helper.h"
 #include "../core/logger.h"
 #include "../core/param_helpers.h"
 
@@ -278,6 +279,7 @@ LRESULT CALLBACK InputService::MouseHookProc(int code, WPARAM wparam,
     if (wparam == WM_LBUTTONDOWN || wparam == WM_RBUTTONDOWN ||
         wparam == WM_MBUTTONDOWN) {
       POINT pt = ms->pt;
+      double pt_scale = GetScaleFactorForPoint(pt);
 
       // Check if click is outside any capturing palette window
       for (const auto& id : instance_->pointer_captures_) {
@@ -286,12 +288,13 @@ LRESULT CALLBACK InputService::MouseHookProc(int code, WPARAM wparam,
 
         RECT rect;
         GetWindowRect(window->hwnd, &rect);
+        // PtInRect check stays in physical space (both pt and rect are physical)
         if (!PtInRect(&rect, pt)) {
           flutter::EncodableMap data{
               {flutter::EncodableValue("x"),
-               flutter::EncodableValue(static_cast<double>(pt.x))},
+               flutter::EncodableValue(PhysicalToLogical(pt.x, pt_scale))},
               {flutter::EncodableValue("y"),
-               flutter::EncodableValue(static_cast<double>(pt.y))},
+               flutter::EncodableValue(PhysicalToLogical(pt.y, pt_scale))},
           };
           instance_->event_sink_("input", "clickOutside", &id, data);
         }
@@ -300,21 +303,23 @@ LRESULT CALLBACK InputService::MouseHookProc(int code, WPARAM wparam,
 
     if (wparam == WM_MOUSEMOVE) {
       POINT pt = ms->pt;
+      double pt_scale = GetScaleFactorForPoint(pt);
       for (const auto& id : instance_->pointer_captures_) {
         auto* window = WindowStore::Instance().Get(id);
         if (!window || !window->hwnd) continue;
 
         RECT rect;
         GetWindowRect(window->hwnd, &rect);
+        // PtInRect check stays in physical space
         bool inside = PtInRect(&rect, pt) != FALSE;
 
         // We emit enter/exit on every move; Dart side deduplicates
         std::string event = inside ? "pointerEnter" : "pointerExit";
         flutter::EncodableMap data{
             {flutter::EncodableValue("x"),
-             flutter::EncodableValue(static_cast<double>(pt.x))},
+             flutter::EncodableValue(PhysicalToLogical(pt.x, pt_scale))},
             {flutter::EncodableValue("y"),
-             flutter::EncodableValue(static_cast<double>(pt.y))},
+             flutter::EncodableValue(PhysicalToLogical(pt.y, pt_scale))},
         };
         instance_->event_sink_("input", event, &id, data);
       }

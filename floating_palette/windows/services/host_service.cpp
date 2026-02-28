@@ -1,5 +1,6 @@
 #include "host_service.h"
 
+#include "../core/dpi_helper.h"
 #include "../core/logger.h"
 
 namespace floating_palette {
@@ -84,21 +85,22 @@ void HostService::GetSnapshot(
     bool visible = ::IsWindowVisible(window->hwnd) != FALSE;
     bool focused = (GetForegroundWindow() == window->hwnd);
 
+    double scale = has_rect ? GetScaleFactorForHwnd(window->hwnd) : 1.0;
     flutter::EncodableMap entry{
         {flutter::EncodableValue("id"), flutter::EncodableValue(id)},
         {flutter::EncodableValue("visible"), flutter::EncodableValue(visible)},
         {flutter::EncodableValue("x"),
          flutter::EncodableValue(
-             has_rect ? static_cast<double>(rect.left) : 0.0)},
+             has_rect ? PhysicalToLogical(rect.left, scale) : 0.0)},
         {flutter::EncodableValue("y"),
          flutter::EncodableValue(
-             has_rect ? static_cast<double>(rect.top) : 0.0)},
+             has_rect ? PhysicalToLogical(rect.top, scale) : 0.0)},
         {flutter::EncodableValue("width"),
          flutter::EncodableValue(
-             has_rect ? static_cast<double>(rect.right - rect.left) : 0.0)},
+             has_rect ? PhysicalToLogical(rect.right - rect.left, scale) : 0.0)},
         {flutter::EncodableValue("height"),
          flutter::EncodableValue(
-             has_rect ? static_cast<double>(rect.bottom - rect.top) : 0.0)},
+             has_rect ? PhysicalToLogical(rect.bottom - rect.top, scale) : 0.0)},
         {flutter::EncodableValue("focused"),
          flutter::EncodableValue(focused)},
     };
