@@ -110,12 +110,19 @@ class InputClient extends ServiceClient {
   }
 
   /// Called on click outside.
-  void onClickOutside(String id, void Function(Offset position) callback) {
+  ///
+  /// [callback] receives the click position and the ID of the palette that
+  /// was clicked (if any). A null [clickedPaletteId] means the click was
+  /// not on any palette window.
+  void onClickOutside(String id, void Function(Offset position, String? clickedPaletteId) callback) {
     onWindowEvent(id, 'clickOutside', (event) {
-      callback(Offset(
-        (event.data['x'] as num).toDouble(),
-        (event.data['y'] as num).toDouble(),
-      ));
+      callback(
+        Offset(
+          (event.data['x'] as num).toDouble(),
+          (event.data['y'] as num).toDouble(),
+        ),
+        event.data['clickedPaletteId'] as String?,
+      );
     });
   }
 

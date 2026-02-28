@@ -311,6 +311,15 @@ class PaletteGenerator extends GeneratorForAnnotation<FloatingPaletteApp> {
         onHideFocus = name != null ? onHideFocusMapping[name] : null;
       }
 
+      // Parse clickOutsideScope enum
+      final clickOutsideScopeReader = reader.peek('clickOutsideScope');
+      String? clickOutsideScope;
+      if (clickOutsideScopeReader != null && !clickOutsideScopeReader.isNull) {
+        final name = clickOutsideScopeReader.objectValue.getField('_name')?.toStringValue();
+        const clickOutsideScopeMapping = {'nonPalette': 'nonPalette', 'anywhere': 'anywhere'};
+        clickOutsideScope = name != null ? clickOutsideScopeMapping[name] : null;
+      }
+
       // Parse preset enum
       final presetReader = reader.peek('preset');
       String? preset;
@@ -358,6 +367,7 @@ class PaletteGenerator extends GeneratorForAnnotation<FloatingPaletteApp> {
         alwaysOnTop: alwaysOnTop,
         focusPolicy: focusPolicy,
         onHideFocus: onHideFocus,
+        clickOutsideScope: clickOutsideScope,
       ));
     }
 
@@ -470,6 +480,7 @@ class _PaletteInfo {
   final bool? alwaysOnTop;
   final String? focusPolicy;
   final String? onHideFocus;
+  final String? clickOutsideScope;
 
   _PaletteInfo({
     required this.id,
@@ -492,6 +503,7 @@ class _PaletteInfo {
     this.alwaysOnTop,
     this.focusPolicy,
     this.onHideFocus,
+    this.clickOutsideScope,
   });
 
   /// Whether any size config is specified.
@@ -513,7 +525,8 @@ class _PaletteInfo {
       keepAlive != null ||
       alwaysOnTop != null ||
       focusPolicy != null ||
-      onHideFocus != null;
+      onHideFocus != null ||
+      clickOutsideScope != null;
 
   /// Whether any config (preset or individual fields) is specified.
   bool get hasAnyConfig => preset != null || hasSizeConfig || hasBehaviorConfig;
@@ -577,6 +590,9 @@ class _PaletteInfo {
         if (onHideFocus != null) {
           behaviorParts.add('onHideFocus: FocusRestoreMode.$onHideFocus');
         }
+        if (clickOutsideScope != null) {
+          behaviorParts.add('clickOutsideScope: ClickOutsideScope.$clickOutsideScope');
+        }
         copyWithParts.add('behavior: PaletteBehavior(${behaviorParts.join(', ')})');
       }
 
@@ -633,6 +649,9 @@ class _PaletteInfo {
       }
       if (onHideFocus != null) {
         behaviorParts.add('onHideFocus: FocusRestoreMode.$onHideFocus');
+      }
+      if (clickOutsideScope != null) {
+        behaviorParts.add('clickOutsideScope: ClickOutsideScope.$clickOutsideScope');
       }
       configParts.add('behavior: PaletteBehavior(${behaviorParts.join(', ')})');
     }

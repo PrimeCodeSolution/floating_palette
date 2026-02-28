@@ -66,6 +66,13 @@ class PaletteBehavior {
   /// See [PaletteGroup] for built-in groups like [PaletteGroup.menu].
   final PaletteGroup? group;
 
+  /// Controls what counts as "clicking outside" the palette.
+  ///
+  /// - [ClickOutsideScope.nonPalette] = only non-palette clicks dismiss (default)
+  /// - [ClickOutsideScope.anywhere] = any click outside this palette dismisses,
+  ///   including clicks on sibling palettes
+  final ClickOutsideScope clickOutsideScope;
+
   const PaletteBehavior({
     this.hideOnClickOutside = true,
     this.hideOnEscape = true,
@@ -76,6 +83,7 @@ class PaletteBehavior {
     this.alwaysOnTop = false,
     this.onHideFocus = FocusRestoreMode.mainWindow,
     this.group,
+    this.clickOutsideScope = ClickOutsideScope.nonPalette,
   });
 
   /// Modal-like behavior: must explicitly dismiss.
@@ -88,7 +96,8 @@ class PaletteBehavior {
         keepAlive = false,
         alwaysOnTop = false,
         onHideFocus = FocusRestoreMode.mainWindow,
-        group = null;
+        group = null,
+        clickOutsideScope = ClickOutsideScope.nonPalette;
 
   /// Tooltip-like behavior: dismisses easily.
   const PaletteBehavior.tooltip()
@@ -100,7 +109,8 @@ class PaletteBehavior {
         keepAlive = false,
         alwaysOnTop = false,
         onHideFocus = FocusRestoreMode.none,
-        group = null;
+        group = null,
+        clickOutsideScope = ClickOutsideScope.anywhere;
 
   /// Persistent panel: stays until explicitly hidden.
   const PaletteBehavior.persistent()
@@ -112,7 +122,8 @@ class PaletteBehavior {
         keepAlive = true,
         alwaysOnTop = false,
         onHideFocus = FocusRestoreMode.none,
-        group = null;
+        group = null,
+        clickOutsideScope = ClickOutsideScope.nonPalette;
 
   /// Spotlight-style: hides app when dismissed (returns to previous app).
   const PaletteBehavior.spotlight()
@@ -124,7 +135,8 @@ class PaletteBehavior {
         keepAlive = false,
         alwaysOnTop = false,
         onHideFocus = FocusRestoreMode.previousApp,
-        group = null;
+        group = null,
+        clickOutsideScope = ClickOutsideScope.nonPalette;
 
   /// Menu behavior: dismisses on click outside, part of exclusive menu group.
   ///
@@ -139,7 +151,8 @@ class PaletteBehavior {
         keepAlive = false,
         alwaysOnTop = false,
         onHideFocus = FocusRestoreMode.mainWindow,
-        group = PaletteGroup.menu;
+        group = PaletteGroup.menu,
+        clickOutsideScope = ClickOutsideScope.nonPalette;
 
   PaletteBehavior copyWith({
     bool? hideOnClickOutside,
@@ -151,6 +164,7 @@ class PaletteBehavior {
     bool? alwaysOnTop,
     FocusRestoreMode? onHideFocus,
     PaletteGroup? group,
+    ClickOutsideScope? clickOutsideScope,
   }) {
     return PaletteBehavior(
       hideOnClickOutside: hideOnClickOutside ?? this.hideOnClickOutside,
@@ -162,6 +176,7 @@ class PaletteBehavior {
       alwaysOnTop: alwaysOnTop ?? this.alwaysOnTop,
       onHideFocus: onHideFocus ?? this.onHideFocus,
       group: group ?? this.group,
+      clickOutsideScope: clickOutsideScope ?? this.clickOutsideScope,
     );
   }
 
@@ -175,6 +190,7 @@ class PaletteBehavior {
         'alwaysOnTop': alwaysOnTop,
         'onHideFocus': onHideFocus.name,
         'group': group?.name,
+        'clickOutsideScope': clickOutsideScope.name,
       };
 
   /// Whether to take keyboard focus based on [focusPolicy].

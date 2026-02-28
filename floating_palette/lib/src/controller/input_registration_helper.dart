@@ -51,6 +51,7 @@ class InputRegistrationHelper {
     // Resolve defaults from config
     final effectiveFocus = focusOverride ?? behavior.shouldFocus;
     final effectiveClickOutside = clickOutsideOverride ?? behavior.clickOutsideBehavior;
+    final effectiveClickOutsideScope = behavior.clickOutsideScope;
     final effectiveGroup = groupOverride ?? behavior.group;
 
     // Resolve keys: passed parameter > config.keyboard.alwaysIntercept > null
@@ -74,6 +75,7 @@ class InputRegistrationHelper {
       focus: effectiveFocus,
       keys: effectiveKeys,
       clickOutside: effectiveClickOutside,
+      clickOutsideScope: effectiveClickOutsideScope,
       group: effectiveGroup,
     );
     final registered =

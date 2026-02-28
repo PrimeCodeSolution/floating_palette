@@ -37,4 +37,5 @@ enum Log {
     static let host = OSLog(subsystem: subsystem, category: "Host")
     static let glass = OSLog(subsystem: subsystem, category: "Glass")
     static let plugin = OSLog(subsystem: subsystem, category: "Plugin")
+    static let textSelection = OSLog(subsystem: subsystem, category: "TextSelection")
 }

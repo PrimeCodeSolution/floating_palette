@@ -12,10 +12,12 @@ import 'palettes/spotlight_palette.dart';
 import 'palettes/chat_bubble_palette.dart';
 import 'palettes/clock_palette.dart';
 import 'palettes/virtual_keyboard_palette.dart';
+import 'palettes/text_selection_palette.dart';
 
 // Events (for auto-registration)
 import 'events/keyboard_events.dart';
 import 'events/notion_events.dart';
+import 'events/text_selection_events.dart';
 
 part 'palette_setup.g.dart';
 
@@ -165,6 +167,20 @@ part 'palette_setup.g.dart';
         Event(KeyboardKeyPressed),
         // Host → Keyboard (incoming)
         Event(SnapStateEvent),
+      ],
+    ),
+
+    // Text Selection - shows selected text from any app
+    PaletteAnnotation(
+      id: 'text-selection',
+      widget: TextSelectionPalette,
+      width: 320,
+      minHeight: 40,
+      maxHeight: 200,
+      focus: TakesFocus.no, // Don't steal focus from the app being used
+      hideOnEscape: true,
+      events: [
+        Event(TextUpdateEvent),
       ],
     ),
   ],

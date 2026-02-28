@@ -879,7 +879,7 @@ class PaletteController<TArgs> implements PaletteIdentifiable {
   }
 
   /// Called when user clicks outside this palette.
-  void onClickOutside(void Function(Offset position) callback) {
+  void onClickOutside(void Function(Offset position, String? clickedPaletteId) callback) {
     _input.onClickOutside(id, callback);
   }
 

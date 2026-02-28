@@ -10,6 +10,17 @@ enum OnHideFocus {
   previousApp,
 }
 
+/// Controls what counts as "clicking outside" the palette.
+enum ClickOutsideScope {
+  /// Only clicks in non-palette areas trigger click-outside.
+  /// Clicking on a sibling palette does NOT dismiss this palette.
+  nonPalette,
+
+  /// Any click outside this specific palette triggers click-outside,
+  /// including clicks on sibling palettes.
+  anywhere,
+}
+
 /// Whether the palette takes keyboard focus when shown.
 enum TakesFocus {
   /// Take keyboard focus when shown (default).

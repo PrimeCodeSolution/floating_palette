@@ -15,3 +15,6 @@ export 'window_client.dart';
 export 'zorder_client.dart';
 export 'background_capture_client.dart';
 export 'snap_client.dart';
+export 'text_selection.dart';
+export 'text_selection_client.dart';
+export 'text_selection_monitor.dart';

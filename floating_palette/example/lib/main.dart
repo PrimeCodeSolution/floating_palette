@@ -7,6 +7,7 @@ import 'examples/notion/notion_screen.dart';
 import 'examples/glass/glass_demo_screen.dart';
 import 'examples/chat/chat_screen.dart';
 import 'examples/clock/clock_screen.dart';
+import 'examples/text_selection/text_selection_screen.dart';
 import 'palette_setup.dart';
 import 'theme/brand.dart';
 
@@ -176,6 +177,16 @@ class LauncherScreen extends StatelessWidget {
                 icon: Icons.access_time,
                 color: FPColors.secondary,
                 onTap: () => _openExample(context, const ClockScreen()),
+              ),
+              const SizedBox(height: FPSpacing.md),
+              _ExampleCard(
+                title: 'Text Selection',
+                description:
+                    'Detects text selection in any app via Accessibility API. '
+                    'Shows a palette below the selected text.',
+                icon: Icons.select_all,
+                color: FPColors.primary,
+                onTap: () => _openExample(context, const TextSelectionScreen()),
               ),
               const SizedBox(height: FPSpacing.xl),
               // Hotkey hint

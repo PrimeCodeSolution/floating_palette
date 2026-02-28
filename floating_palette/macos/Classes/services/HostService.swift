@@ -62,6 +62,7 @@ class HostService {
             "glassEffect": true,
             "multiMonitor": true,
             "contentSizing": true,
+            "textSelection": true,
             "platform": "macos",
             "osVersion": osVersion,
         ]

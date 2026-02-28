@@ -170,8 +170,14 @@ class InputManager {
     // Set up click outside handling
     if (behavior.clickOutside != ClickOutsideBehavior.passthrough) {
       await _inputClient.capturePointer(id);
-      _inputClient.onClickOutside(id, (position) {
-        _clickOutsideHandler.handleClickOutside(id, behavior.clickOutside, position);
+      _inputClient.onClickOutside(id, (position, clickedPaletteId) {
+        _clickOutsideHandler.handleClickOutside(
+          id,
+          behavior.clickOutside,
+          behavior.clickOutsideScope,
+          position,
+          clickedPaletteId,
+        );
       });
     }
 

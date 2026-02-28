@@ -272,7 +272,11 @@ void main() {
   group('onClickOutside', () {
     test('fires callback with parsed Offset', () {
       Offset? received;
-      client.onClickOutside('w1', (pos) => received = pos);
+      String? receivedClickedId;
+      client.onClickOutside('w1', (pos, clickedId) {
+        received = pos;
+        receivedClickedId = clickedId;
+      });
 
       mock.simulateEvent(const NativeEvent(
         service: 'input',
@@ -282,6 +286,26 @@ void main() {
       ));
 
       expect(received, equals(const Offset(300, 450)));
+      expect(receivedClickedId, isNull);
+    });
+
+    test('passes clickedPaletteId when present', () {
+      Offset? received;
+      String? receivedClickedId;
+      client.onClickOutside('w1', (pos, clickedId) {
+        received = pos;
+        receivedClickedId = clickedId;
+      });
+
+      mock.simulateEvent(const NativeEvent(
+        service: 'input',
+        event: 'clickOutside',
+        windowId: 'w1',
+        data: {'x': 300.0, 'y': 450.0, 'clickedPaletteId': 'w2'},
+      ));
+
+      expect(received, equals(const Offset(300, 450)));
+      expect(receivedClickedId, equals('w2'));
     });
   });
 

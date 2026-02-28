@@ -179,6 +179,7 @@ class MockNativeBridge implements NativeBridge {
       'glassEffect': true,
       'multiMonitor': true,
       'contentSizing': true,
+      'textSelection': true,
       'platform': 'test',
       'osVersion': 'test',
     });

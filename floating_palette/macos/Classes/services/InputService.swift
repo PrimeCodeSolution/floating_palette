@@ -296,18 +296,25 @@ final class InputService {
 
                 let screenLocation = NSEvent.mouseLocation
 
-                // Check if click is outside each captured window
-                for capturedId in self.capturedWindows {
-                    guard let capturedWindow = self.store.get(capturedId) else { continue }
-
-                    let windowFrame = capturedWindow.panel.frame
-
-                    if !windowFrame.contains(screenLocation) {
-                        self.eventSink?("input", "clickOutside", capturedId, [
-                            "x": screenLocation.x,
-                            "y": screenLocation.y
-                        ])
+                // Find if click is inside any visible palette window
+                var clickedPaletteId: String? = nil
+                for (id, window) in self.store.all() {
+                    if window.panel.isVisible && window.panel.frame.contains(screenLocation) {
+                        clickedPaletteId = id
+                        break
                     }
+                }
+
+                // Fire clickOutside for each captured window (except the one clicked on)
+                for capturedId in self.capturedWindows {
+                    guard self.store.exists(capturedId) else { continue }
+                    if capturedId == clickedPaletteId { continue }
+
+                    self.eventSink?("input", "clickOutside", capturedId, [
+                        "x": screenLocation.x,
+                        "y": screenLocation.y,
+                        "clickedPaletteId": clickedPaletteId as Any,
+                    ])
                 }
 
                 // Pass the event through (don't consume mouse clicks)
@@ -322,18 +329,25 @@ final class InputService {
 
                 let screenLocation = NSEvent.mouseLocation
 
-                // Check if click is outside all captured windows
-                for capturedId in self.capturedWindows {
-                    guard let capturedWindow = self.store.get(capturedId) else { continue }
-
-                    let windowFrame = capturedWindow.panel.frame
-
-                    if !windowFrame.contains(screenLocation) {
-                        self.eventSink?("input", "clickOutside", capturedId, [
-                            "x": screenLocation.x,
-                            "y": screenLocation.y
-                        ])
+                // Find if click is inside any visible palette window
+                var clickedPaletteId: String? = nil
+                for (id, window) in self.store.all() {
+                    if window.panel.isVisible && window.panel.frame.contains(screenLocation) {
+                        clickedPaletteId = id
+                        break
                     }
+                }
+
+                // Fire clickOutside for each captured window (except the one clicked on)
+                for capturedId in self.capturedWindows {
+                    guard self.store.exists(capturedId) else { continue }
+                    if capturedId == clickedPaletteId { continue }
+
+                    self.eventSink?("input", "clickOutside", capturedId, [
+                        "x": screenLocation.x,
+                        "y": screenLocation.y,
+                        "clickedPaletteId": clickedPaletteId as Any,
+                    ])
                 }
             }
         }

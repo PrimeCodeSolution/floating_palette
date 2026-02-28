@@ -126,7 +126,7 @@ export 'src/positioning/screen_rect.dart' show ScreenRect, RectToScreenRect, Scr
 // ════════════════════════════════════════════════════════════════════════════════
 
 export 'src/input/palette_group.dart' show PaletteGroup;
-export 'src/input/click_outside_behavior.dart' show ClickOutsideBehavior;
+export 'src/input/click_outside_behavior.dart' show ClickOutsideBehavior, ClickOutsideScope;
 
 // ════════════════════════════════════════════════════════════════════════════════
 // Data Types (returned by PaletteHost convenience methods)
@@ -149,3 +149,10 @@ export 'src/snap/snap_types.dart' show SnapEdge, SnapAlignment, SnapConfig, Auto
 export 'src/snap/snap_events.dart'
     show SnapEvent, SnapDragStarted, SnapDragging, SnapDragEnded, SnapDetached, SnapSnapped,
          SnapProximityEntered, SnapProximityExited, SnapProximityUpdated;
+
+// ════════════════════════════════════════════════════════════════════════════════
+// Text Selection (system-wide text selection detection)
+// ════════════════════════════════════════════════════════════════════════════════
+
+export 'src/services/text_selection.dart' show SelectedText, AccessibilityPermission;
+export 'src/services/text_selection_monitor.dart' show TextSelectionMonitor;

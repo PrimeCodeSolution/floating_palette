@@ -21,6 +21,9 @@ class InputBehavior {
   /// Behavior when user clicks outside the palette.
   final ClickOutsideBehavior clickOutside;
 
+  /// Controls what counts as "clicking outside" the palette.
+  final ClickOutsideScope clickOutsideScope;
+
   /// Optional exclusive group membership.
   ///
   /// Palettes in the same group are mutually exclusive - showing one
@@ -33,6 +36,7 @@ class InputBehavior {
     this.focus = true,
     this.keys,
     this.clickOutside = ClickOutsideBehavior.dismiss,
+    this.clickOutsideScope = ClickOutsideScope.nonPalette,
     this.group,
   });
 
@@ -41,6 +45,7 @@ class InputBehavior {
       : focus = true,
         keys = null,
         clickOutside = ClickOutsideBehavior.dismiss,
+        clickOutsideScope = ClickOutsideScope.nonPalette,
         group = null;
 
   /// Overlay behavior: no focus, no key capture, click passes through.
@@ -48,6 +53,7 @@ class InputBehavior {
       : focus = false,
         keys = null,
         clickOutside = ClickOutsideBehavior.passthrough,
+        clickOutsideScope = ClickOutsideScope.nonPalette,
         group = null;
 
   /// Menu behavior: takes focus, captures navigation keys, dismisses on click outside.
@@ -66,6 +72,7 @@ class InputBehavior {
           LogicalKeyboardKey.tab,
         },
         clickOutside: ClickOutsideBehavior.dismiss,
+        clickOutsideScope: ClickOutsideScope.nonPalette,
         group: PaletteGroup.menu,
       );
 
@@ -74,12 +81,14 @@ class InputBehavior {
     bool? focus,
     Set<LogicalKeyboardKey>? keys,
     ClickOutsideBehavior? clickOutside,
+    ClickOutsideScope? clickOutsideScope,
     PaletteGroup? group,
   }) {
     return InputBehavior(
       focus: focus ?? this.focus,
       keys: keys ?? this.keys,
       clickOutside: clickOutside ?? this.clickOutside,
+      clickOutsideScope: clickOutsideScope ?? this.clickOutsideScope,
       group: group ?? this.group,
     );
   }
@@ -92,10 +101,11 @@ class InputBehavior {
           focus == other.focus &&
           _setEquals(keys, other.keys) &&
           clickOutside == other.clickOutside &&
+          clickOutsideScope == other.clickOutsideScope &&
           group == other.group;
 
   @override
-  int get hashCode => Object.hash(focus, keys, clickOutside, group);
+  int get hashCode => Object.hash(focus, keys, clickOutside, clickOutsideScope, group);
 
   static bool _setEquals<T>(Set<T>? a, Set<T>? b) {
     if (a == null && b == null) return true;

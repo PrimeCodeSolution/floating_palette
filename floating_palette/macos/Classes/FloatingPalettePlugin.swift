@@ -27,6 +27,7 @@ public class FloatingPalettePlugin: NSObject, FlutterPlugin {
     private var messageService: MessageService?
     private var hostService: HostService?
     private var snapService: SnapService?
+    private var textSelectionService: TextSelectionService?
     private var dragCoordinator: DragCoordinator?
 
     public static func register(with registrar: FlutterPluginRegistrar) {
@@ -90,6 +91,9 @@ public class FloatingPalettePlugin: NSObject, FlutterPlugin {
 
         snapService = SnapService()
         snapService?.setEventSink(eventSink)
+
+        textSelectionService = TextSelectionService()
+        textSelectionService?.setEventSink(eventSink)
 
         // Create DragCoordinator and wire it up
         dragCoordinator = DragCoordinator()
@@ -162,6 +166,8 @@ public class FloatingPalettePlugin: NSObject, FlutterPlugin {
             hostService?.handle(command, windowId: windowId, params: params, result: result)
         case "snap":
             snapService?.handle(command, windowId: windowId, params: params, result: result)
+        case "textSelection":
+            textSelectionService?.handle(command, windowId: windowId, params: params, result: result)
         default:
             result(FlutterError(code: "UNKNOWN_SERVICE", message: "Unknown service: \(service)", details: nil))
         }

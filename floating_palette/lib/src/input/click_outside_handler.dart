@@ -32,11 +32,23 @@ class ClickOutsideHandler {
         _setFocus = setFocus;
 
   /// Handle a click-outside event for a palette.
+  ///
+  /// [clickedPaletteId] is the ID of the sibling palette that was clicked,
+  /// or null if the click was not on any palette window.
   void handleClickOutside(
     String paletteId,
     ClickOutsideBehavior behavior,
+    ClickOutsideScope scope,
     Offset position,
+    String? clickedPaletteId,
   ) {
+    // If scope is nonPalette and click was on a sibling palette, skip
+    if (scope == ClickOutsideScope.nonPalette && clickedPaletteId != null) {
+      debugPrint('[InputManager] Skipping clickOutside for $paletteId '
+          '(scope=nonPalette, clicked on $clickedPaletteId)');
+      return;
+    }
+
     // ════════════════════════════════════════════════════════════════════════
     // Deduplication Logic
     // ════════════════════════════════════════════════════════════════════════

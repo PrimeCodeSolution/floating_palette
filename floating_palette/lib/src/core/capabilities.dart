@@ -27,6 +27,9 @@ class Capabilities {
   /// Whether content sizing is supported.
   final bool contentSizing;
 
+  /// Whether system-wide text selection detection is supported.
+  final bool textSelection;
+
   /// The platform name (e.g., 'macos', 'windows').
   final String platform;
 
@@ -40,6 +43,7 @@ class Capabilities {
     required this.glassEffect,
     required this.multiMonitor,
     required this.contentSizing,
+    required this.textSelection,
     required this.platform,
     required this.osVersion,
   });
@@ -73,6 +77,7 @@ class Capabilities {
         glassEffect: result['glassEffect'] as bool? ?? false,
         multiMonitor: result['multiMonitor'] as bool? ?? false,
         contentSizing: result['contentSizing'] as bool? ?? false,
+        textSelection: result['textSelection'] as bool? ?? false,
         platform: result['platform'] as String? ?? 'unknown',
         osVersion: result['osVersion'] as String? ?? 'unknown',
       );
@@ -94,6 +99,7 @@ class Capabilities {
         glassEffect = true,
         multiMonitor = true,
         contentSizing = true,
+        textSelection = true,
         platform = 'test',
         osVersion = 'test';
 
@@ -105,6 +111,7 @@ class Capabilities {
         glassEffect = false,
         multiMonitor = false,
         contentSizing = false,
+        textSelection = false,
         platform = 'unknown',
         osVersion = 'unknown';
 
@@ -116,6 +123,7 @@ class Capabilities {
       'glassEffect: $glassEffect, '
       'multiMonitor: $multiMonitor, '
       'contentSizing: $contentSizing, '
+      'textSelection: $textSelection, '
       'platform: $platform, '
       'osVersion: $osVersion)';
 }

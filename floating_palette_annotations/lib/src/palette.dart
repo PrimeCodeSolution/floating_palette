@@ -162,6 +162,13 @@ class PaletteAnnotation {
   /// Users can still call `unpin()` manually to temporarily lower it.
   final bool? alwaysOnTop;
 
+  /// Controls what counts as "clicking outside" the palette.
+  ///
+  /// - [ClickOutsideScope.nonPalette] = only non-palette clicks dismiss (default)
+  /// - [ClickOutsideScope.anywhere] = any click outside this palette dismisses,
+  ///   including clicks on sibling palettes
+  final ClickOutsideScope? clickOutsideScope;
+
   const PaletteAnnotation({
     required this.id,
     required this.widget,
@@ -184,5 +191,6 @@ class PaletteAnnotation {
     this.focus,
     this.onHideFocus,
     this.alwaysOnTop,
+    this.clickOutsideScope,
   });
 }
