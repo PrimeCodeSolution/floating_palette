@@ -19,6 +19,18 @@
 
 namespace floating_palette {
 
+// Apply rounded-corner window region to clip black corners.
+// w, h are physical pixel dimensions; corner_radius is in logical pixels.
+static void ApplyWindowRegion(HWND hwnd, int w, int h, double corner_radius, double scale) {
+  if (corner_radius > 0) {
+    int r = LogicalToPhysical(corner_radius * 2.0, scale);
+    HRGN rgn = CreateRoundRectRgn(0, 0, w + 1, h + 1, r, r);
+    SetWindowRgn(hwnd, rgn, TRUE);  // OS takes ownership of rgn
+  } else {
+    SetWindowRgn(hwnd, NULL, TRUE);  // Remove region (rectangular)
+  }
+}
+
 // Forward declaration for deferred reveal
 extern VisibilityService* g_visibility_service;
 void VisibilityService_Reveal(const std::string& window_id);
@@ -60,6 +72,16 @@ LRESULT CALLBACK WindowService::PaletteWndProc(HWND hwnd, UINT msg,
         SetWindowPos(child, NULL, 0, 0, rect.right - rect.left,
                      rect.bottom - rect.top,
                      SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+      }
+      // Reapply rounded-corner region after resize
+      auto* pw = WindowStore::Instance().FindByHwnd(hwnd);
+      if (pw && pw->corner_radius > 0) {
+        RECT wr;
+        GetWindowRect(hwnd, &wr);
+        int rw = wr.right - wr.left;
+        int rh = wr.bottom - wr.top;
+        double scale = GetScaleFactorForHwnd(hwnd);
+        ApplyWindowRegion(hwnd, rw, rh, pw->corner_radius, scale);
       }
       return 0;
     }
@@ -217,6 +239,9 @@ void WindowService::Create(
   // Make fully transparent initially for reveal pattern.
   // LWA_COLORKEY makes RGB(1,0,1) pixels transparent (overflow padding area).
   SetLayeredWindowAttributes(hwnd, RGB(1, 0, 1), 0, LWA_COLORKEY | LWA_ALPHA);
+
+  // Apply rounded-corner region to clip black corners
+  ApplyWindowRegion(hwnd, w, h, corner_radius, create_scale);
 
   // Create palette window record (no engine yet — deferred)
   auto palette = std::make_unique<PaletteWindow>();
