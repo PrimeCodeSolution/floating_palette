@@ -33,8 +33,15 @@ void FloatingPalette_ResizeWindow(const char* window_id, double width,
   if (!window_id) return;
   std::string id(window_id);
 
+  FP_LOG("FFI", "ResizeWindow [" + id + "] " +
+                     std::to_string(static_cast<int>(width)) + "x" +
+                     std::to_string(static_cast<int>(height)));
+
   auto* window = WindowStore::Instance().Get(id);
-  if (!window || !window->hwnd) return;
+  if (!window || !window->hwnd) {
+    FP_LOG("FFI", "ResizeWindow NOT_FOUND: " + id);
+    return;
+  }
 
   // Store desired size immediately
   window->width = width;
@@ -51,6 +58,7 @@ void FloatingPalette_ResizeWindow(const char* window_id, double width,
 
   // Trigger the reveal pattern (also deferred)
   if (window->is_pending_reveal) {
+    FP_LOG("FFI", "ResizeWindow posting DEFERRED_REVEAL: " + id);
     PostMessage(window->hwnd, WM_FP_DEFERRED_REVEAL, 0, 0);
   }
 }

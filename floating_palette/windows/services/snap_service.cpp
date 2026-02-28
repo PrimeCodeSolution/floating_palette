@@ -12,22 +12,33 @@ void SnapService::Handle(
     const std::string* window_id,
     const flutter::EncodableMap& params,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  // All commands read IDs from params (matching macOS / Dart SnapClient API).
+  // The envelope window_id is ignored for snap commands.
   if (command == "snap") {
-    Snap(window_id, params, std::move(result));
+    Snap(params, std::move(result));
   } else if (command == "detach") {
-    Detach(window_id, std::move(result));
+    Detach(params, std::move(result));
   } else if (command == "reSnap") {
-    ReSnap(window_id, std::move(result));
+    ReSnap(params, std::move(result));
   } else if (command == "getSnapDistance") {
-    GetSnapDistance(window_id, std::move(result));
+    GetSnapDistance(params, std::move(result));
   } else if (command == "setAutoSnapConfig") {
-    SetAutoSnapConfig(window_id, params, std::move(result));
+    SetAutoSnapConfig(params, std::move(result));
   } else {
     result->Error("UNKNOWN_COMMAND", "Unknown snap command: " + command);
   }
 }
 
 void SnapService::OnWindowShown(const std::string& id) {
+  // Reposition any followers snapped to this window
+  for (auto& [follower_id, binding] : bindings_) {
+    if (binding.target_id == id) {
+      PositionFollower(binding);
+    }
+  }
+}
+
+void SnapService::OnWindowMoved(const std::string& id) {
   // Reposition any followers snapped to this window
   for (auto& [follower_id, binding] : bindings_) {
     if (binding.target_id == id) {
@@ -55,6 +66,12 @@ void SnapService::OnWindowDestroyed(const std::string& id) {
   }
 
   auto_snap_configs_.erase(id);
+
+  // Clear proximity state if it involves this window
+  if (proximity_state_ &&
+      (proximity_state_->dragged_id == id || proximity_state_->target_id == id)) {
+    proximity_state_.reset();
+  }
 }
 
 // DragCoordinatorDelegate
@@ -65,7 +82,6 @@ void SnapService::DragBegan(const std::string& id) {
   if (it != bindings_.end()) {
     auto* window = WindowStore::Instance().Get(id);
     if (window && window->hwnd) {
-      // Restore as top-level window
       SetParent(window->hwnd, NULL);
     }
     bindings_.erase(it);
@@ -74,82 +90,59 @@ void SnapService::DragBegan(const std::string& id) {
       event_sink_("snap", "detached", &id, data);
     }
   }
+
+  // Clear stale proximity state from previous drag
+  if (proximity_state_ && proximity_state_->dragged_id == id) {
+    proximity_state_.reset();
+  }
 }
 
 void SnapService::DragMoved(const std::string& id, const RECT& frame) {
-  // Check for auto-snap proximity
-  auto config_it = auto_snap_configs_.find(id);
-  if (config_it == auto_snap_configs_.end() || !config_it->second.enabled) {
-    return;
+  // Reposition any followers snapped to the dragged window (target following)
+  for (auto& [follower_id, binding] : bindings_) {
+    if (binding.target_id == id) {
+      PositionFollower(binding);
+    }
   }
 
-  // Auto-snap proximity detection during drag is handled here
-  // The Dart side handles the visual feedback
+  // Check proximity for auto-snap (unsnapped window being dragged)
+  if (bindings_.find(id) == bindings_.end()) {
+    CheckProximity(id, frame);
+  }
 }
 
 void SnapService::DragEnded(const std::string& id, const RECT& frame) {
-  // Check for auto-snap at drag end
-  auto config_it = auto_snap_configs_.find(id);
-  if (config_it == auto_snap_configs_.end() || !config_it->second.enabled) {
-    return;
-  }
+  // Auto-snap if in proximity at drag end
+  if (proximity_state_ && proximity_state_->dragged_id == id) {
+    auto& prox = *proximity_state_;
 
-  const auto& config = config_it->second;
-  double proximity = config.proximity;
+    SnapBinding binding;
+    binding.follower_id = id;
+    binding.target_id = prox.target_id;
+    binding.follower_edge = prox.dragged_edge;
+    binding.target_edge = prox.target_edge;
+    binding.alignment = "center";
+    binding.gap = 4;
 
-  // Check proximity to all other visible palette windows
-  auto all = WindowStore::Instance().All();
-  for (auto& [target_id, target] : all) {
-    if (target_id == id || !target->hwnd) continue;
-    if (!::IsWindowVisible(target->hwnd)) continue;
+    bindings_[id] = binding;
+    PositionFollower(binding);
 
-    RECT target_rect;
-    GetWindowRect(target->hwnd, &target_rect);
-
-    // Check distance between edges
-    double dist_right =
-        std::abs(frame.right - target_rect.left);  // snap to left of target
-    double dist_left =
-        std::abs(frame.left - target_rect.right);  // snap to right of target
-    double dist_bottom =
-        std::abs(frame.bottom - target_rect.top);  // snap above target
-    double dist_top =
-        std::abs(frame.top - target_rect.bottom);  // snap below target
-
-    double min_dist =
-        (std::min)({dist_right, dist_left, dist_bottom, dist_top});
-    if (min_dist <= proximity) {
-      // Auto-snap to closest edge
-      SnapBinding binding;
-      binding.follower_id = id;
-      binding.target_id = target_id;
-
-      if (min_dist == dist_right) binding.edge = "right";
-      else if (min_dist == dist_left) binding.edge = "left";
-      else if (min_dist == dist_bottom) binding.edge = "bottom";
-      else binding.edge = "top";
-
-      bindings_[id] = binding;
-      PositionFollower(binding);
-
-      if (event_sink_) {
-        flutter::EncodableMap data{
-            {flutter::EncodableValue("targetId"),
-             flutter::EncodableValue(target_id)},
-            {flutter::EncodableValue("edge"),
-             flutter::EncodableValue(binding.edge)},
-        };
-        event_sink_("snap", "snapped", &id, data);
-      }
-      break;
+    if (event_sink_) {
+      flutter::EncodableMap data{
+          {flutter::EncodableValue("targetId"),
+           flutter::EncodableValue(prox.target_id)},
+      };
+      event_sink_("snap", "snapped", &id, data);
     }
+    proximity_state_.reset();
   }
 }
 
-void SnapService::PositionFollower(const SnapBinding& binding) {
+SnapService::SnapPosition SnapService::CalculateSnapPosition(
+    const SnapBinding& binding) {
   auto* follower = WindowStore::Instance().Get(binding.follower_id);
   auto* target = WindowStore::Instance().Get(binding.target_id);
-  if (!follower || !follower->hwnd || !target || !target->hwnd) return;
+  if (!follower || !follower->hwnd || !target || !target->hwnd) return {0, 0};
 
   RECT target_rect;
   GetWindowRect(target->hwnd, &target_rect);
@@ -159,80 +152,291 @@ void SnapService::PositionFollower(const SnapBinding& binding) {
   int fw = follower_rect.right - follower_rect.left;
   int fh = follower_rect.bottom - follower_rect.top;
 
+  int tw = target_rect.right - target_rect.left;
+  int th = target_rect.bottom - target_rect.top;
+
+  int gap = static_cast<int>(binding.gap);
   int new_x = 0, new_y = 0;
 
-  if (binding.edge == "right") {
-    new_x = target_rect.right;
-    new_y = target_rect.top;
-  } else if (binding.edge == "left") {
-    new_x = target_rect.left - fw;
-    new_y = target_rect.top;
-  } else if (binding.edge == "bottom") {
-    new_x = target_rect.left;
-    new_y = target_rect.bottom;
-  } else if (binding.edge == "top") {
-    new_x = target_rect.left;
-    new_y = target_rect.top - fh;
+  // Calculate position based on edge pair (matching macOS calculateSnapPosition).
+  // Note: Windows Y is top-down (0 = top of screen), macOS Y is bottom-up.
+  const auto& fe = binding.follower_edge;
+  const auto& te = binding.target_edge;
+
+  if (fe == "top" && te == "bottom") {
+    // Follower's top meets target's bottom -> follower goes below target
+    new_y = target_rect.bottom + gap;
+  } else if (fe == "bottom" && te == "top") {
+    // Follower's bottom meets target's top -> follower goes above target
+    new_y = target_rect.top - fh - gap;
+  } else if (fe == "left" && te == "right") {
+    // Follower's left meets target's right -> follower goes to right of target
+    new_x = target_rect.right + gap;
+  } else if (fe == "right" && te == "left") {
+    // Follower's right meets target's left -> follower goes to left of target
+    new_x = target_rect.left - fw - gap;
   }
 
-  new_x += static_cast<int>(binding.offset_x);
-  new_y += static_cast<int>(binding.offset_y);
+  // Calculate alignment along the perpendicular axis
+  bool is_vertical_snap = (fe == "top" || fe == "bottom");
+  if (is_vertical_snap) {
+    // Align along X axis
+    if (binding.alignment == "leading") {
+      new_x = target_rect.left;
+    } else if (binding.alignment == "trailing") {
+      new_x = target_rect.right - fw;
+    } else {
+      // center (default)
+      new_x = target_rect.left + (tw - fw) / 2;
+    }
+  } else {
+    // Align along Y axis
+    if (binding.alignment == "leading") {
+      new_y = target_rect.top;
+    } else if (binding.alignment == "trailing") {
+      new_y = target_rect.bottom - fh;
+    } else {
+      // center (default)
+      new_y = target_rect.top + (th - fh) / 2;
+    }
+  }
 
-  SetWindowPos(follower->hwnd, NULL, new_x, new_y, 0, 0,
+  return {new_x, new_y};
+}
+
+void SnapService::PositionFollower(const SnapBinding& binding) {
+  auto* follower = WindowStore::Instance().Get(binding.follower_id);
+  if (!follower || !follower->hwnd) return;
+
+  auto pos = CalculateSnapPosition(binding);
+  SetWindowPos(follower->hwnd, NULL, pos.x, pos.y, 0, 0,
                SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+// Proximity Detection
+
+bool SnapService::AreCompatibleEdges(const std::string& drag_edge,
+                                     const std::string& target_edge) {
+  return (drag_edge == "top" && target_edge == "bottom") ||
+         (drag_edge == "bottom" && target_edge == "top") ||
+         (drag_edge == "left" && target_edge == "right") ||
+         (drag_edge == "right" && target_edge == "left");
+}
+
+double SnapService::CalculateEdgeDistance(
+    const RECT& dragged, const std::string& dragged_edge,
+    const RECT& target, const std::string& target_edge) {
+  // Check perpendicular overlap (edges must be in range to snap)
+  bool is_vertical = (dragged_edge == "top" || dragged_edge == "bottom");
+  if (is_vertical) {
+    // Horizontal overlap required
+    long overlap = (std::min)(dragged.right, target.right) -
+                   (std::max)(dragged.left, target.left);
+    if (overlap <= 0) return 1e9;
+  } else {
+    // Vertical overlap required
+    long overlap = (std::min)(dragged.bottom, target.bottom) -
+                   (std::max)(dragged.top, target.top);
+    if (overlap <= 0) return 1e9;
+  }
+
+  // Calculate edge-to-edge distance
+  if (dragged_edge == "top" && target_edge == "bottom")
+    return std::abs(static_cast<double>(dragged.top - target.bottom));
+  if (dragged_edge == "bottom" && target_edge == "top")
+    return std::abs(static_cast<double>(dragged.bottom - target.top));
+  if (dragged_edge == "left" && target_edge == "right")
+    return std::abs(static_cast<double>(dragged.left - target.right));
+  if (dragged_edge == "right" && target_edge == "left")
+    return std::abs(static_cast<double>(dragged.right - target.left));
+  return 1e9;
+}
+
+void SnapService::CheckProximity(const std::string& dragged_id,
+                                 const RECT& frame) {
+  auto drag_config_it = auto_snap_configs_.find(dragged_id);
+  if (drag_config_it == auto_snap_configs_.end() ||
+      drag_config_it->second.can_snap_from.empty()) {
+    // Clear proximity if no longer configured
+    if (proximity_state_ && proximity_state_->dragged_id == dragged_id) {
+      if (event_sink_) {
+        flutter::EncodableMap data{
+            {flutter::EncodableValue("targetId"),
+             flutter::EncodableValue(proximity_state_->target_id)},
+        };
+        event_sink_("snap", "proximityExited", &dragged_id, data);
+      }
+      proximity_state_.reset();
+    }
+    return;
+  }
+  const auto& drag_config = drag_config_it->second;
+
+  struct BestMatch {
+    std::string target_id;
+    std::string dragged_edge;
+    std::string target_edge;
+    double distance;
+  };
+  std::optional<BestMatch> best;
+
+  for (auto& [target_id, target_config] : auto_snap_configs_) {
+    if (target_id == dragged_id) continue;
+    if (target_config.accepts_snap_on.empty()) continue;
+
+    // Check target_ids filter
+    if (!drag_config.target_ids.empty() &&
+        drag_config.target_ids.find(target_id) == drag_config.target_ids.end()) {
+      continue;
+    }
+
+    // Skip if target already follows the dragged window (avoid reverse)
+    auto existing = bindings_.find(target_id);
+    if (existing != bindings_.end() && existing->second.target_id == dragged_id) {
+      continue;
+    }
+
+    auto* target_window = WindowStore::Instance().Get(target_id);
+    if (!target_window || !target_window->hwnd) continue;
+    if (!::IsWindowVisible(target_window->hwnd)) continue;
+
+    RECT target_rect;
+    GetWindowRect(target_window->hwnd, &target_rect);
+
+    // Check each edge combination
+    for (const auto& drag_edge : drag_config.can_snap_from) {
+      for (const auto& target_edge : target_config.accepts_snap_on) {
+        if (!AreCompatibleEdges(drag_edge, target_edge)) continue;
+
+        double dist = CalculateEdgeDistance(frame, drag_edge,
+                                            target_rect, target_edge);
+        if (dist < drag_config.proximity_threshold) {
+          if (!best || dist < best->distance) {
+            best = {target_id, drag_edge, target_edge, dist};
+          }
+        }
+      }
+    }
+  }
+
+  // Update proximity state and emit events
+  if (best) {
+    if (!proximity_state_ ||
+        proximity_state_->target_id != best->target_id ||
+        proximity_state_->dragged_edge != best->dragged_edge ||
+        proximity_state_->target_edge != best->target_edge) {
+      // New proximity or edge change
+      if (proximity_state_ && event_sink_) {
+        flutter::EncodableMap data{
+            {flutter::EncodableValue("targetId"),
+             flutter::EncodableValue(proximity_state_->target_id)},
+        };
+        event_sink_("snap", "proximityExited", &dragged_id, data);
+      }
+      proximity_state_ = ProximityState{
+          dragged_id, best->target_id, best->dragged_edge, best->target_edge};
+      if (event_sink_) {
+        flutter::EncodableMap data{
+            {flutter::EncodableValue("targetId"),
+             flutter::EncodableValue(best->target_id)},
+            {flutter::EncodableValue("draggedEdge"),
+             flutter::EncodableValue(best->dragged_edge)},
+            {flutter::EncodableValue("targetEdge"),
+             flutter::EncodableValue(best->target_edge)},
+            {flutter::EncodableValue("distance"),
+             flutter::EncodableValue(best->distance)},
+        };
+        event_sink_("snap", "proximityEntered", &dragged_id, data);
+      }
+    } else {
+      // Same proximity, update distance
+      if (event_sink_) {
+        flutter::EncodableMap data{
+            {flutter::EncodableValue("targetId"),
+             flutter::EncodableValue(best->target_id)},
+            {flutter::EncodableValue("distance"),
+             flutter::EncodableValue(best->distance)},
+        };
+        event_sink_("snap", "proximityUpdated", &dragged_id, data);
+      }
+    }
+  } else if (proximity_state_ && proximity_state_->dragged_id == dragged_id) {
+    // Exited proximity
+    if (event_sink_) {
+      flutter::EncodableMap data{
+          {flutter::EncodableValue("targetId"),
+           flutter::EncodableValue(proximity_state_->target_id)},
+      };
+      event_sink_("snap", "proximityExited", &dragged_id, data);
+    }
+    proximity_state_.reset();
+  }
 }
 
 // Commands
 
 void SnapService::Snap(
-    const std::string* window_id,
     const flutter::EncodableMap& params,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  if (!window_id) {
-    result->Error("MISSING_ID", "windowId required");
+  std::string follower_id = GetString(params, "followerId", "");
+  std::string target_id = GetString(params, "targetId", "");
+  if (follower_id.empty() || target_id.empty()) {
+    result->Error("INVALID_PARAMS", "followerId and targetId required");
     return;
   }
 
-  std::string target_id = GetString(params, "targetId", "");
-  if (target_id.empty()) {
-    result->Error("MISSING_TARGET", "targetId required");
-    return;
+  std::string follower_edge = GetString(params, "followerEdge", "top");
+  std::string target_edge = GetString(params, "targetEdge", "bottom");
+  std::string alignment = GetString(params, "alignment", "center");
+  double gap = GetDouble(params, "gap", 0);
+
+  // Read config sub-map for onTargetHidden / onTargetDestroyed
+  std::string on_target_hidden = "hideFollower";
+  std::string on_target_destroyed = "hideAndDetach";
+  auto config_it = params.find(flutter::EncodableValue("config"));
+  if (config_it != params.end() &&
+      std::holds_alternative<flutter::EncodableMap>(config_it->second)) {
+    const auto& config = std::get<flutter::EncodableMap>(config_it->second);
+    on_target_hidden = GetString(config, "onTargetHidden", "hideFollower");
+    on_target_destroyed = GetString(config, "onTargetDestroyed", "hideAndDetach");
   }
 
   SnapBinding binding;
-  binding.follower_id = *window_id;
+  binding.follower_id = follower_id;
   binding.target_id = target_id;
-  binding.edge = GetString(params, "edge", "right");
-  binding.offset_x = GetDouble(params, "offsetX", 0);
-  binding.offset_y = GetDouble(params, "offsetY", 0);
+  binding.follower_edge = follower_edge;
+  binding.target_edge = target_edge;
+  binding.alignment = alignment;
+  binding.gap = gap;
+  binding.on_target_hidden = on_target_hidden;
+  binding.on_target_destroyed = on_target_destroyed;
 
-  bindings_[*window_id] = binding;
+  bindings_[follower_id] = binding;
   PositionFollower(binding);
 
   if (event_sink_) {
     flutter::EncodableMap data{
         {flutter::EncodableValue("targetId"),
          flutter::EncodableValue(target_id)},
-        {flutter::EncodableValue("edge"),
-         flutter::EncodableValue(binding.edge)},
     };
-    event_sink_("snap", "snapped", window_id, data);
+    event_sink_("snap", "snapped", &follower_id, data);
   }
 
   result->Success(flutter::EncodableValue());
 }
 
 void SnapService::Detach(
-    const std::string* window_id,
+    const flutter::EncodableMap& params,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  if (!window_id) {
-    result->Error("MISSING_ID", "windowId required");
+  std::string follower_id = GetString(params, "followerId", "");
+  if (follower_id.empty()) {
+    result->Error("INVALID_PARAMS", "followerId required");
     return;
   }
 
-  auto it = bindings_.find(*window_id);
+  auto it = bindings_.find(follower_id);
   if (it != bindings_.end()) {
-    auto* window = WindowStore::Instance().Get(*window_id);
+    auto* window = WindowStore::Instance().Get(follower_id);
     if (window && window->hwnd) {
       SetParent(window->hwnd, NULL);
     }
@@ -240,7 +444,7 @@ void SnapService::Detach(
 
     if (event_sink_) {
       flutter::EncodableMap data;
-      event_sink_("snap", "detached", window_id, data);
+      event_sink_("snap", "detached", &follower_id, data);
     }
   }
 
@@ -248,79 +452,112 @@ void SnapService::Detach(
 }
 
 void SnapService::ReSnap(
-    const std::string* window_id,
+    const flutter::EncodableMap& params,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  if (!window_id) {
-    result->Success(flutter::EncodableValue());
+  std::string follower_id = GetString(params, "followerId", "");
+  if (follower_id.empty()) {
+    result->Error("INVALID_PARAMS", "followerId required");
     return;
   }
 
-  // Reposition followers of this window
-  for (auto& [follower_id, binding] : bindings_) {
-    if (binding.target_id == *window_id) {
-      PositionFollower(binding);
-    }
+  auto it = bindings_.find(follower_id);
+  if (it == bindings_.end()) {
+    result->Error("NOT_FOUND", "No binding for follower");
+    return;
   }
 
-  // Also reposition this window if it's a follower
-  auto it = bindings_.find(*window_id);
-  if (it != bindings_.end()) {
-    PositionFollower(it->second);
+  PositionFollower(it->second);
+
+  if (event_sink_) {
+    flutter::EncodableMap data{
+        {flutter::EncodableValue("targetId"),
+         flutter::EncodableValue(it->second.target_id)},
+    };
+    event_sink_("snap", "snapped", &follower_id, data);
   }
 
   result->Success(flutter::EncodableValue());
 }
 
 void SnapService::GetSnapDistance(
-    const std::string* window_id,
+    const flutter::EncodableMap& params,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  if (!window_id) {
+  std::string follower_id = GetString(params, "followerId", "");
+  if (follower_id.empty()) {
     result->Success(flutter::EncodableValue(0.0));
     return;
   }
 
-  auto it = bindings_.find(*window_id);
+  auto it = bindings_.find(follower_id);
   if (it == bindings_.end()) {
     result->Success(flutter::EncodableValue(0.0));
     return;
   }
 
-  // Return the distance between follower and target edges
   auto* follower = WindowStore::Instance().Get(it->second.follower_id);
-  auto* target = WindowStore::Instance().Get(it->second.target_id);
-  if (!follower || !follower->hwnd || !target || !target->hwnd) {
+  if (!follower || !follower->hwnd) {
     result->Success(flutter::EncodableValue(0.0));
     return;
   }
 
-  RECT fr, tr;
+  RECT fr;
   GetWindowRect(follower->hwnd, &fr);
-  GetWindowRect(target->hwnd, &tr);
 
-  double dist = 0;
-  if (it->second.edge == "right") dist = std::abs(fr.left - tr.right);
-  else if (it->second.edge == "left") dist = std::abs(fr.right - tr.left);
-  else if (it->second.edge == "bottom") dist = std::abs(fr.top - tr.bottom);
-  else if (it->second.edge == "top") dist = std::abs(fr.bottom - tr.top);
+  auto snap_pos = CalculateSnapPosition(it->second);
+  double dist = std::hypot(
+      static_cast<double>(snap_pos.x - fr.left),
+      static_cast<double>(snap_pos.y - fr.top));
 
   result->Success(flutter::EncodableValue(dist));
 }
 
 void SnapService::SetAutoSnapConfig(
-    const std::string* window_id,
     const flutter::EncodableMap& params,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  if (!window_id) {
-    result->Error("MISSING_ID", "windowId required");
+  std::string palette_id = GetString(params, "paletteId", "");
+  if (palette_id.empty()) {
+    result->Error("INVALID_PARAMS", "paletteId required");
     return;
   }
 
-  AutoSnapConfig config;
-  config.proximity = GetDouble(params, "proximity", 20.0);
-  config.enabled = GetBool(params, "enabled", true);
-  config.preferred_edge = GetString(params, "preferredEdge", "right");
+  // Helper to read a string list from an EncodableMap into a set
+  auto read_string_set = [](const flutter::EncodableMap& map, const char* key)
+      -> std::unordered_set<std::string> {
+    std::unordered_set<std::string> result;
+    auto it = map.find(flutter::EncodableValue(key));
+    if (it != map.end() &&
+        std::holds_alternative<flutter::EncodableList>(it->second)) {
+      for (const auto& item : std::get<flutter::EncodableList>(it->second)) {
+        if (std::holds_alternative<std::string>(item)) {
+          result.insert(std::get<std::string>(item));
+        }
+      }
+    }
+    return result;
+  };
 
-  auto_snap_configs_[*window_id] = config;
+  // Read the config sub-map (Dart sends { paletteId, config: { ... } })
+  auto config_it = params.find(flutter::EncodableValue("config"));
+  if (config_it != params.end() &&
+      std::holds_alternative<flutter::EncodableMap>(config_it->second)) {
+    const auto& config_map = std::get<flutter::EncodableMap>(config_it->second);
+
+    auto can_snap_from = read_string_set(config_map, "canSnapFrom");
+    auto accepts_snap_on = read_string_set(config_map, "acceptsSnapOn");
+
+    // If config is effectively disabled, remove it
+    if (can_snap_from.empty() && accepts_snap_on.empty()) {
+      auto_snap_configs_.erase(palette_id);
+    } else {
+      AutoSnapConfig config;
+      config.can_snap_from = std::move(can_snap_from);
+      config.accepts_snap_on = std::move(accepts_snap_on);
+      config.target_ids = read_string_set(config_map, "targetIds");
+      config.proximity_threshold = GetDouble(config_map, "proximityThreshold", 50.0);
+      config.show_feedback = GetBool(config_map, "showFeedback", true);
+      auto_snap_configs_[palette_id] = std::move(config);
+    }
+  }
 
   result->Success(flutter::EncodableValue());
 }

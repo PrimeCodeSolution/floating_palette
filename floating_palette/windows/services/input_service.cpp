@@ -136,7 +136,7 @@ void InputService::Handle(
     const flutter::EncodableMap& params,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
   if (command == "captureKeyboard") {
-    CaptureKeyboard(window_id, std::move(result));
+    CaptureKeyboard(window_id, params, std::move(result));
   } else if (command == "releaseKeyboard") {
     ReleaseKeyboard(window_id, std::move(result));
   } else if (command == "capturePointer") {
@@ -154,6 +154,8 @@ void InputService::Handle(
 
 void InputService::CleanupForWindow(const std::string& window_id) {
   keyboard_captures_.erase(window_id);
+  captured_keys_.erase(window_id);
+  capture_all_keys_.erase(window_id);
   pointer_captures_.erase(window_id);
   if (keyboard_captures_.empty()) RemoveKeyboardHook();
   if (pointer_captures_.empty()) RemoveMouseHook();
@@ -163,9 +165,9 @@ LRESULT CALLBACK InputService::KeyboardHookProc(int code, WPARAM wparam,
                                                  LPARAM lparam) {
   if (code >= 0 && instance_ && instance_->event_sink_) {
     KBDLLHOOKSTRUCT* kb = reinterpret_cast<KBDLLHOOKSTRUCT*>(lparam);
-    std::string event_type =
-        (wparam == WM_KEYDOWN || wparam == WM_SYSKEYDOWN) ? "keyDown"
-                                                           : "keyUp";
+    bool is_key_down =
+        (wparam == WM_KEYDOWN || wparam == WM_SYSKEYDOWN);
+    std::string event_type = is_key_down ? "keyDown" : "keyUp";
 
     // Convert VK code to Flutter LogicalKeyboardKey ID
     int64_t key_id = VkToLogicalKey(kb->vkCode);
@@ -196,9 +198,73 @@ LRESULT CALLBACK InputService::KeyboardHookProc(int code, WPARAM wparam,
          flutter::EncodableValue(modifiers)},
     };
 
-    // Emit to all capturing windows
+    // Gap 1: Per-window key filtering (match macOS behavior)
+    bool should_consume = false;
+
     for (const auto& id : instance_->keyboard_captures_) {
-      instance_->event_sink_("input", event_type, &id, data);
+      bool wants_all =
+          instance_->capture_all_keys_.count(id)
+              ? instance_->capture_all_keys_[id]
+              : false;
+      bool wants_this_key = wants_all;
+      if (!wants_this_key) {
+        auto keys_it = instance_->captured_keys_.find(id);
+        if (keys_it != instance_->captured_keys_.end()) {
+          wants_this_key = keys_it->second.count(key_id) > 0;
+        }
+      }
+
+      if (wants_this_key) {
+        // Emit via event sink (existing path)
+        instance_->event_sink_("input", event_type, &id, data);
+
+        // Gap 2: Forward via entry channel (match macOS dual-path delivery)
+        auto* window = WindowStore::Instance().Get(id);
+        if (window && window->entry_channel) {
+          if (is_key_down) {
+            flutter::EncodableMap args{
+                {flutter::EncodableValue("keyId"),
+                 flutter::EncodableValue(key_id)},
+                {flutter::EncodableValue("modifiers"),
+                 flutter::EncodableValue(modifiers)},
+            };
+            window->entry_channel->InvokeMethod(
+                "keyDown",
+                std::make_unique<flutter::EncodableValue>(
+                    flutter::EncodableValue(args)));
+          } else {
+            flutter::EncodableMap args{
+                {flutter::EncodableValue("keyId"),
+                 flutter::EncodableValue(key_id)},
+            };
+            window->entry_channel->InvokeMethod(
+                "keyUp",
+                std::make_unique<flutter::EncodableValue>(
+                    flutter::EncodableValue(args)));
+          }
+        }
+
+        should_consume = true;
+      }
+    }
+
+    // Gap 3: Pass-through tracking for keyUp consistency
+    if (is_key_down) {
+      if (should_consume) {
+        instance_->passed_through_vk_codes_.erase(kb->vkCode);
+      } else {
+        instance_->passed_through_vk_codes_.insert(kb->vkCode);
+      }
+    } else {
+      // keyUp: if matching keyDown was passed through, force pass-through
+      if (instance_->passed_through_vk_codes_.count(kb->vkCode)) {
+        instance_->passed_through_vk_codes_.erase(kb->vkCode);
+        return CallNextHookEx(keyboard_hook_, code, wparam, lparam);
+      }
+    }
+
+    if (should_consume) {
+      return 1;  // Eat the key event
     }
   }
   return CallNextHookEx(keyboard_hook_, code, wparam, lparam);
@@ -285,11 +351,32 @@ void InputService::RemoveMouseHook() {
 
 void InputService::CaptureKeyboard(
     const std::string* window_id,
+    const flutter::EncodableMap& params,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
   if (!window_id) {
     result->Error("MISSING_ID", "windowId required");
     return;
   }
+
+  // Parse allKeys flag
+  bool all_keys = GetBool(params, "allKeys", false);
+  capture_all_keys_[*window_id] = all_keys;
+
+  // Parse keys list (Flutter logical key IDs)
+  std::unordered_set<int64_t> key_ids;
+  auto keys_it = params.find(flutter::EncodableValue("keys"));
+  if (keys_it != params.end()) {
+    if (auto* list =
+            std::get_if<flutter::EncodableList>(&keys_it->second)) {
+      for (const auto& val : *list) {
+        if (auto* i32 = std::get_if<int32_t>(&val))
+          key_ids.insert(static_cast<int64_t>(*i32));
+        else if (auto* i64 = std::get_if<int64_t>(&val))
+          key_ids.insert(*i64);
+      }
+    }
+  }
+  captured_keys_[*window_id] = std::move(key_ids);
 
   keyboard_captures_.insert(*window_id);
   InstallKeyboardHook();
@@ -306,6 +393,8 @@ void InputService::ReleaseKeyboard(
   }
 
   keyboard_captures_.erase(*window_id);
+  captured_keys_.erase(*window_id);
+  capture_all_keys_.erase(*window_id);
   if (keyboard_captures_.empty()) {
     RemoveKeyboardHook();
   }

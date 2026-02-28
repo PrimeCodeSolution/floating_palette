@@ -94,6 +94,12 @@ LRESULT CALLBACK WindowService::PaletteWndProc(HWND hwnd, UINT msg,
       // Deferred resize from FFI ResizeWindow (avoids re-entrant layout)
       int w = static_cast<int>(wparam);
       int h = static_cast<int>(lparam);
+      {
+        auto* pw = WindowStore::Instance().FindByHwnd(hwnd);
+        FP_LOG("WndProc", "WM_FP_DEFERRED_RESIZE " +
+                               std::to_string(w) + "x" + std::to_string(h) +
+                               (pw ? " [" + pw->id + "]" : " [?]"));
+      }
       SetWindowPos(hwnd, NULL, 0, 0, w, h,
                    SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
       // WM_SIZE handler will resize the Flutter child
@@ -103,6 +109,8 @@ LRESULT CALLBACK WindowService::PaletteWndProc(HWND hwnd, UINT msg,
     case WM_FP_DEFERRED_REVEAL: {
       // Deferred reveal from FFI ResizeWindow
       auto* pw = WindowStore::Instance().FindByHwnd(hwnd);
+      FP_LOG("WndProc", "WM_FP_DEFERRED_REVEAL" +
+                             (pw ? " [" + pw->id + "]" : " [?]"));
       if (pw) {
         VisibilityService_Reveal(pw->id);
       }
@@ -115,6 +123,8 @@ LRESULT CALLBACK WindowService::PaletteWndProc(HWND hwnd, UINT msg,
         // Deferred engine creation (lowest-priority message ensures all
         // pending method calls are processed before we block the pump)
         auto* pw = WindowStore::Instance().FindByHwnd(hwnd);
+        FP_LOG("WndProc", "WM_TIMER ENGINE_SETUP" +
+                               (pw ? " [" + pw->id + "]" : " [?]"));
         if (pw && instance_) {
           instance_->SetupEngine(pw->id);
         }
@@ -158,6 +168,8 @@ void WindowService::Create(
     return;
   }
 
+  FP_LOG("Window", "Create start: " + *window_id);
+
   EnsureWndClassRegistered();
 
   // Parse parameters
@@ -190,12 +202,18 @@ void WindowService::Create(
       nullptr);
 
   if (!hwnd) {
+    FP_LOG("Window", "Create HWND FAILED: " + *window_id);
     result->Error("CREATE_FAILED", "CreateWindowExW failed");
     return;
   }
 
-  // Make fully transparent initially for reveal pattern
-  SetLayeredWindowAttributes(hwnd, 0, 0, LWA_ALPHA);
+  FP_LOG("Window", "Create HWND ok: " + *window_id +
+                        " hwnd=0x" + std::to_string(reinterpret_cast<uintptr_t>(hwnd)) +
+                        " size=" + std::to_string(w) + "x" + std::to_string(h));
+
+  // Make fully transparent initially for reveal pattern.
+  // LWA_COLORKEY makes RGB(1,0,1) pixels transparent (overflow padding area).
+  SetLayeredWindowAttributes(hwnd, RGB(1, 0, 1), 0, LWA_COLORKEY | LWA_ALPHA);
 
   // Create palette window record (no engine yet — deferred)
   auto palette = std::make_unique<PaletteWindow>();
@@ -217,7 +235,7 @@ void WindowService::Create(
   std::string entry_point = GetString(params, "entryPoint", "paletteMain");
   palette->entry_point = entry_point;
 
-  FP_LOG("Window", "created (HWND): " + *window_id);
+  FP_LOG("Window", "Create stored: " + *window_id + " entry=" + entry_point);
 
   // Store the window
   WindowStore::Instance().Store(*window_id, std::move(palette));
@@ -229,13 +247,21 @@ void WindowService::Create(
   // Defer engine creation via WM_TIMER (lowest-priority message).
   // This ensures ALL pending method calls from Dart (setSize, setPosition,
   // show, etc.) are processed before engine creation blocks the message pump.
+  FP_LOG("Window", "Create timer set: " + *window_id);
   SetTimer(hwnd, TIMER_ENGINE_SETUP, 1, NULL);
 }
 
 void WindowService::SetupEngine(const std::string& window_id) {
+  FP_LOG("Window", "SetupEngine start: " + window_id);
   auto* palette = WindowStore::Instance().Get(window_id);
-  if (!palette || palette->is_destroyed) return;
-  if (palette->engine) return;  // Already set up
+  if (!palette || palette->is_destroyed) {
+    FP_LOG("Window", "SetupEngine ABORT (not found or destroyed): " + window_id);
+    return;
+  }
+  if (palette->engine) {
+    FP_LOG("Window", "SetupEngine SKIP (already set up): " + window_id);
+    return;  // Already set up
+  }
 
   HWND hwnd = palette->hwnd;
   int w = static_cast<int>(palette->width);
@@ -266,26 +292,29 @@ void WindowService::SetupEngine(const std::string& window_id) {
   engine_props.dart_entrypoint_argv = nullptr;
 
   // Create the Flutter engine
+  FP_LOG("Window", "SetupEngine creating engine: " + window_id);
   FlutterDesktopEngineRef engine = FlutterDesktopEngineCreate(&engine_props);
   if (!engine) {
-    FP_LOG("Window", "ENGINE_FAILED for: " + window_id);
+    FP_LOG("Window", "SetupEngine ENGINE CREATE FAILED: " + window_id);
     return;
   }
 
   // Run the engine with the palette's entry point
   const char* ep = palette->entry_point.c_str();
+  FP_LOG("Window", "SetupEngine running entry=" + std::string(ep) + ": " + window_id);
   if (!FlutterDesktopEngineRun(engine, ep)) {
-    FP_LOG("Window", "ENGINE_RUN_FAILED for: " + window_id);
+    FP_LOG("Window", "SetupEngine ENGINE RUN FAILED: " + window_id);
     FlutterDesktopEngineDestroy(engine);
     return;
   }
   palette->engine = engine;
 
   // Create view controller (this creates a Flutter HWND)
+  FP_LOG("Window", "SetupEngine creating view controller: " + window_id);
   FlutterDesktopViewControllerRef controller =
       FlutterDesktopViewControllerCreate(w, h, engine);
   if (!controller) {
-    FP_LOG("Window", "VIEW_FAILED for: " + window_id);
+    FP_LOG("Window", "SetupEngine VIEW CONTROLLER FAILED: " + window_id);
     FlutterDesktopEngineDestroy(engine);
     palette->engine = nullptr;
     return;
@@ -295,6 +324,11 @@ void WindowService::SetupEngine(const std::string& window_id) {
   // Reparent the Flutter view HWND into our palette window
   HWND flutter_hwnd = FlutterDesktopViewGetHWND(
       FlutterDesktopViewControllerGetView(controller));
+  FP_LOG("Window", "SetupEngine reparenting flutter_hwnd=0x" +
+                        std::to_string(reinterpret_cast<uintptr_t>(flutter_hwnd)) +
+                        " into hwnd=0x" +
+                        std::to_string(reinterpret_cast<uintptr_t>(hwnd)) +
+                        ": " + window_id);
   if (flutter_hwnd) {
     SetWindowLongPtr(flutter_hwnd, GWL_STYLE, WS_CHILD | WS_VISIBLE);
     SetWindowLongPtr(flutter_hwnd, GWL_EXSTYLE, 0);
@@ -304,6 +338,7 @@ void WindowService::SetupEngine(const std::string& window_id) {
   }
 
   // Set up per-palette method channels
+  FP_LOG("Window", "SetupEngine setting up channels: " + window_id);
   FlutterDesktopMessengerRef messenger =
       FlutterDesktopEngineGetMessenger(engine);
   WindowChannelRouter::SetupChannels(palette, messenger,
@@ -311,7 +346,7 @@ void WindowService::SetupEngine(const std::string& window_id) {
                                      snap_service_, drag_coordinator_,
                                      background_capture_service_);
 
-  FP_LOG("Window", "engine ready: " + window_id);
+  FP_LOG("Window", "SetupEngine COMPLETE: " + window_id);
 
   // Emit "created" event now that engine is ready
   if (event_sink_) {
@@ -329,8 +364,11 @@ void WindowService::Destroy(
     return;
   }
 
+  FP_LOG("Window", "Destroy start: " + *window_id);
+
   auto* window = WindowStore::Instance().Get(*window_id);
   if (!window) {
+    FP_LOG("Window", "Destroy NOT_FOUND: " + *window_id);
     result->Error("NOT_FOUND", "Window not found: " + *window_id);
     return;
   }

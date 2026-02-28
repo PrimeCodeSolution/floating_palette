@@ -1,7 +1,5 @@
 #include "frame_service.h"
 
-#include <flutter/method_result_functions.h>
-
 #include "../coordinators/drag_coordinator.h"
 #include "../core/logger.h"
 #include "../core/param_helpers.h"
@@ -54,6 +52,11 @@ void FrameService::SetPosition(
   double y = GetDouble(params, "y", 0);
   std::string anchor = GetString(params, "anchor", "topLeft");
 
+  FP_LOG("Frame", "SetPosition [" + *window_id + "] x=" +
+                       std::to_string(static_cast<int>(x)) + " y=" +
+                       std::to_string(static_cast<int>(y)) +
+                       " anchor=" + anchor);
+
   // Get current window size for anchor calculation
   RECT rect;
   GetWindowRect(window->hwnd, &rect);
@@ -90,12 +93,9 @@ void FrameService::SetPosition(
   SetWindowPos(window->hwnd, NULL, ix, iy, 0, 0,
                SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 
-  // Notify snap service of position change
+  // Notify snap service of position change — reposition followers
   if (snap_service_) {
-    auto noop_result = std::make_unique<flutter::MethodResultFunctions<flutter::EncodableValue>>(
-        nullptr, nullptr, nullptr);
-    snap_service_->Handle("reSnap", window_id, flutter::EncodableMap{},
-                          std::move(noop_result));
+    snap_service_->OnWindowMoved(*window_id);
   }
 
   result->Success(flutter::EncodableValue());
@@ -120,6 +120,9 @@ void FrameService::SetSize(
   double h = GetDouble(params, "height", window->height);
   int iw = static_cast<int>(w);
   int ih = static_cast<int>(h);
+
+  FP_LOG("Frame", "SetSize [" + *window_id + "] " +
+                       std::to_string(iw) + "x" + std::to_string(ih));
 
   SetWindowPos(window->hwnd, NULL, 0, 0, iw, ih,
                SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);

@@ -19,6 +19,8 @@ void WindowChannelRouter::SetupChannels(
     DragCoordinator* drag_coordinator,
     BackgroundCaptureService* capture_service) {
 
+  FP_LOG("Channel", "SetupChannels start: " + window->id);
+
   // Create binary messenger wrapper (stored on PaletteWindow for lifetime)
   window->binary_messenger =
       std::make_unique<PaletteBinaryMessenger>(messenger);
@@ -27,6 +29,7 @@ void WindowChannelRouter::SetupChannels(
   const std::string& window_id = window->id;
 
   // ── Entry Channel ──────────────────────────────────────────────────────
+  FP_LOG("Channel", "creating entry channel: " + window_id);
   window->entry_channel =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
           messenger_ptr, "floating_palette/entry",
@@ -37,6 +40,7 @@ void WindowChannelRouter::SetupChannels(
           const flutter::MethodCall<flutter::EncodableValue>& call,
           std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
         if (call.method_name() == "getPaletteId") {
+          FP_LOG("Channel", "getPaletteId -> " + window_id);
           result->Success(flutter::EncodableValue(window_id));
         } else {
           result->NotImplemented();
@@ -44,6 +48,7 @@ void WindowChannelRouter::SetupChannels(
       });
 
   // ── Messenger Channel ──────────────────────────────────────────────────
+  FP_LOG("Channel", "creating messenger channel: " + window_id);
   window->messenger_channel =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
           messenger_ptr, "floating_palette/messenger",
@@ -60,7 +65,21 @@ void WindowChannelRouter::SetupChannels(
 
         if (method == "send") {
           if (event_sink) {
-            event_sink("message", "received", &window_id, params);
+            // Extract type and data to match macOS behaviour
+            std::string msg_type = "received";
+            auto type_it = params.find(flutter::EncodableValue("type"));
+            if (type_it != params.end() &&
+                std::holds_alternative<std::string>(type_it->second)) {
+              msg_type = std::get<std::string>(type_it->second);
+            }
+            flutter::EncodableMap msg_data;
+            auto data_it = params.find(flutter::EncodableValue("data"));
+            if (data_it != params.end() &&
+                std::holds_alternative<flutter::EncodableMap>(data_it->second)) {
+              msg_data = std::get<flutter::EncodableMap>(data_it->second);
+            }
+            FP_LOG("Channel", "messenger send type=" + msg_type + " [" + window_id + "]");
+            event_sink("message", msg_type, &window_id, msg_data);
           }
           result->Success(flutter::EncodableValue());
 
@@ -106,6 +125,7 @@ void WindowChannelRouter::SetupChannels(
       });
 
   // ── Self Channel ───────────────────────────────────────────────────────
+  FP_LOG("Channel", "creating self channel: " + window_id);
   window->self_channel =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
           messenger_ptr, "floating_palette/self",
@@ -233,7 +253,7 @@ void WindowChannelRouter::SetupChannels(
         }
       });
 
-  FP_LOG("Plugin", "SetupChannels for " + window_id);
+  FP_LOG("Channel", "SetupChannels COMPLETE: " + window_id);
 }
 
 }  // namespace floating_palette

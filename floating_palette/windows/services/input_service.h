@@ -33,6 +33,13 @@ class InputService {
   std::unordered_set<std::string> keyboard_captures_;
   std::unordered_set<std::string> pointer_captures_;
 
+  // Per-window captured key IDs (empty set = allKeys mode)
+  std::unordered_map<std::string, std::unordered_set<int64_t>> captured_keys_;
+  // Per-window allKeys flag
+  std::unordered_map<std::string, bool> capture_all_keys_;
+  // VK codes whose keyDown was passed through (not consumed)
+  std::unordered_set<DWORD> passed_through_vk_codes_;
+
   // Global hooks
   static HHOOK keyboard_hook_;
   static HHOOK mouse_hook_;
@@ -49,6 +56,7 @@ class InputService {
   void RemoveMouseHook();
 
   void CaptureKeyboard(const std::string* window_id,
+                       const flutter::EncodableMap& params,
                        std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
   void ReleaseKeyboard(const std::string* window_id,
                        std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);

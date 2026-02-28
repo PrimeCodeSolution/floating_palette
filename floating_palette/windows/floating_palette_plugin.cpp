@@ -177,6 +177,9 @@ void FloatingPalettePlugin::HandleMethodCall(
     params = std::get<flutter::EncodableMap>(params_it->second);
   }
 
+  FP_LOG("CMD", service + "." + command +
+                    (window_id ? " [" + *window_id + "]" : " [no-id]"));
+
   // Route to appropriate service
   if (service == "window") {
     window_service_->Handle(command, window_id, params, std::move(result));
@@ -216,6 +219,8 @@ void FloatingPalettePlugin::SendEvent(const std::string& service,
                                       const std::string& event,
                                       const std::string* window_id,
                                       const flutter::EncodableMap& data) {
+  FP_LOG("EVT", service + "." + event +
+                    (window_id ? " [" + *window_id + "]" : " [no-id]"));
   flutter::EncodableMap args;
   args[flutter::EncodableValue("service")] = flutter::EncodableValue(service);
   args[flutter::EncodableValue("event")] = flutter::EncodableValue(event);

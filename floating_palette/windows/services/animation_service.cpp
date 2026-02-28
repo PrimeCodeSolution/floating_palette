@@ -85,7 +85,7 @@ void AnimationService::ApplyValue(const std::string& window_id,
   if (property == "opacity") {
     window->opacity = value;
     BYTE alpha = static_cast<BYTE>(value * 255.0);
-    SetLayeredWindowAttributes(window->hwnd, 0, alpha, LWA_ALPHA);
+    SetLayeredWindowAttributes(window->hwnd, RGB(1, 0, 1), alpha, LWA_COLORKEY | LWA_ALPHA);
   } else {
     RECT rect;
     GetWindowRect(window->hwnd, &rect);
