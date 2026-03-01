@@ -14,6 +14,9 @@ class SnapService;
 
 class VisibilityService {
  public:
+  VisibilityService();
+  ~VisibilityService();
+
   void SetEventSink(EventSink sink) { event_sink_ = std::move(sink); }
   void Handle(const std::string& command,
               const std::string* window_id,
@@ -42,5 +45,11 @@ class VisibilityService {
   void DoReveal(const std::string* window_id,
                 std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 };
+
+// Global pointer for FFI access
+extern VisibilityService* g_visibility_service;
+
+// Free function for FFI callback
+void VisibilityService_Reveal(const std::string& window_id);
 
 }  // namespace floating_palette

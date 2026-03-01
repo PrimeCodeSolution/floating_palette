@@ -16,6 +16,7 @@ class DragCoordinator;
 class FrameService;
 class InputService;
 class SnapService;
+class VisibilityService;
 
 class WindowService {
  public:
@@ -36,6 +37,13 @@ class WindowService {
     drag_coordinator_ = coordinator;
   }
   void SetInputService(InputService* service) { input_service_ = service; }
+  void SetVisibilityService(VisibilityService* service) {
+    visibility_service_ = service;
+  }
+
+  // Static WndProc for palette windows
+  static LRESULT CALLBACK PaletteWndProc(HWND hwnd, UINT msg, WPARAM wparam,
+                                         LPARAM lparam);
 
  private:
   flutter::PluginRegistrarWindows* registrar_;
@@ -45,6 +53,13 @@ class WindowService {
   SnapService* snap_service_ = nullptr;
   DragCoordinator* drag_coordinator_ = nullptr;
   InputService* input_service_ = nullptr;
+  VisibilityService* visibility_service_ = nullptr;
+
+  static bool wndclass_registered_;
+  static WindowService* instance_;
+
+  void EnsureWndClassRegistered();
+  void SetupEngine(const std::string& window_id);
 
   void Create(const std::string* window_id,
               const flutter::EncodableMap& params,

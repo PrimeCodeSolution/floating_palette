@@ -32,7 +32,7 @@ class ZOrderService;
 ///
 /// Commands come in via method channel, get routed to services.
 /// Events go back via method channel.
-class FloatingPalettePlugin {
+class FloatingPalettePlugin : public flutter::Plugin {
  public:
   static void RegisterWithRegistrar(
       flutter::PluginRegistrarWindows* registrar);

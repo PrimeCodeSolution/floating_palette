@@ -84,6 +84,7 @@ void FloatingPalettePlugin::InitializeServices() {
 
   focus_service_ = std::make_unique<FocusService>();
   focus_service_->SetEventSink(event_sink);
+  focus_service_->SetMainHwnd(registrar_->GetView()->GetNativeWindow());
 
   zorder_service_ = std::make_unique<ZOrderService>();
   zorder_service_->SetEventSink(event_sink);
@@ -93,6 +94,7 @@ void FloatingPalettePlugin::InitializeServices() {
 
   screen_service_ = std::make_unique<ScreenService>();
   screen_service_->SetEventSink(event_sink);
+  screen_service_->SetMainHwnd(registrar_->GetView()->GetNativeWindow());
 
   background_capture_service_ =
       std::make_unique<BackgroundCaptureService>(registrar_);
@@ -118,6 +120,7 @@ void FloatingPalettePlugin::InitializeServices() {
   window_service_->SetSnapService(snap_service_.get());
   window_service_->SetDragCoordinator(drag_coordinator_.get());
   window_service_->SetInputService(input_service_.get());
+  window_service_->SetVisibilityService(visibility_service_.get());
 
   frame_service_->SetSnapService(snap_service_.get());
   frame_service_->SetDragCoordinator(drag_coordinator_.get());
@@ -174,6 +177,9 @@ void FloatingPalettePlugin::HandleMethodCall(
     params = std::get<flutter::EncodableMap>(params_it->second);
   }
 
+  FP_LOG("CMD", service + "." + command +
+                    (window_id ? " [" + *window_id + "]" : " [no-id]"));
+
   // Route to appropriate service
   if (service == "window") {
     window_service_->Handle(command, window_id, params, std::move(result));
@@ -213,6 +219,8 @@ void FloatingPalettePlugin::SendEvent(const std::string& service,
                                       const std::string& event,
                                       const std::string* window_id,
                                       const flutter::EncodableMap& data) {
+  FP_LOG("EVT", service + "." + event +
+                    (window_id ? " [" + *window_id + "]" : " [no-id]"));
   flutter::EncodableMap args;
   args[flutter::EncodableValue("service")] = flutter::EncodableValue(service);
   args[flutter::EncodableValue("event")] = flutter::EncodableValue(event);

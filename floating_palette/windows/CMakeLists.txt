@@ -26,6 +26,10 @@ list(APPEND PLUGIN_SOURCES
   # Core
   "core/logger.h"
   "core/window_store.h"
+  "core/param_helpers.h"
+  "core/palette_binary_messenger.h"
+  "core/monitor_helper.h"
+  "core/monitor_helper.cpp"
   # Coordinators
   "coordinators/drag_coordinator.h"
   "coordinators/drag_coordinator.cpp"
@@ -87,7 +91,7 @@ target_compile_definitions(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL)
 # dependencies here.
 target_include_directories(${PLUGIN_NAME} INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin dwmapi Shcore)
+target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin dwmapi Shcore comctl32)
 
 # List of absolute paths to libraries that should be bundled with the plugin.
 # This list could contain prebuilt libraries, or libraries created by an

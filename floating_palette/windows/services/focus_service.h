@@ -1,6 +1,7 @@
 #pragma once
 
 #include <flutter/method_channel.h>
+#include <flutter/plugin_registrar_windows.h>
 #include <flutter/standard_method_codec.h>
 
 #include <memory>
@@ -18,8 +19,11 @@ class FocusService {
               const flutter::EncodableMap& params,
               std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
+  void SetMainHwnd(HWND hwnd) { main_hwnd_ = hwnd; }
+
  private:
   EventSink event_sink_;
+  HWND main_hwnd_ = nullptr;
 
   void Focus(const std::string* window_id,
              std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);

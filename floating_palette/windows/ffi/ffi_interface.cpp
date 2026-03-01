@@ -1,32 +1,102 @@
 #include "ffi_interface.h"
 
+#include <psapi.h>
+
+#include "../core/dpi_helper.h"
 #include "../core/logger.h"
+#include "../core/monitor_helper.h"
 #include "../core/window_store.h"
+
+using namespace floating_palette;
+
+// Static pointer to VisibilityService for reveal callback.
+// Set by VisibilityService on construction.
+namespace floating_palette {
+class VisibilityService;
+extern VisibilityService* g_visibility_service;
+}  // namespace floating_palette
+
+// Forward declaration - defined in visibility_service.cpp
+namespace floating_palette {
+void VisibilityService_Reveal(const std::string& window_id);
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // WINDOW SIZING
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Custom message for deferred resize (avoids re-entrant layout during performLayout)
+#define WM_FP_DEFERRED_RESIZE (WM_USER + 200)
+#define WM_FP_DEFERRED_REVEAL (WM_USER + 201)
+
 void FloatingPalette_ResizeWindow(const char* window_id, double width,
                                   double height) {
-  // TODO: Resize HWND via SetWindowPos
-  FP_LOG("FFI", "ResizeWindow stub");
+  if (!window_id) return;
+  std::string id(window_id);
+
+  FP_LOG("FFI", "ResizeWindow [" + id + "] " +
+                     std::to_string(static_cast<int>(width)) + "x" +
+                     std::to_string(static_cast<int>(height)));
+
+  auto* window = WindowStore::Instance().Get(id);
+  if (!window || !window->hwnd) {
+    FP_LOG("FFI", "ResizeWindow NOT_FOUND: " + id);
+    return;
+  }
+
+  // Store desired logical size
+  window->width = width;
+  window->height = height;
+
+  // Defer the actual native resize to avoid re-entrant layout.
+  // On Windows, SetWindowPos sends WM_SIZE synchronously, which triggers
+  // _updateWindowMetrics -> markNeedsLayout while still inside performLayout.
+  // PostMessage defers to the next message loop iteration.
+  double scale = floating_palette::GetScaleFactorForHwnd(window->hwnd);
+  int w = floating_palette::LogicalToPhysical(width, scale);
+  int h = floating_palette::LogicalToPhysical(height, scale);
+  PostMessage(window->hwnd, WM_FP_DEFERRED_RESIZE, static_cast<WPARAM>(w),
+              static_cast<LPARAM>(h));
+
+  // Trigger the reveal pattern (also deferred)
+  if (window->is_pending_reveal) {
+    FP_LOG("FFI", "ResizeWindow posting DEFERRED_REVEAL: " + id);
+    PostMessage(window->hwnd, WM_FP_DEFERRED_REVEAL, 0, 0);
+  }
 }
 
 bool FloatingPalette_GetWindowFrame(const char* window_id, double* out_x,
                                     double* out_y, double* out_width,
                                     double* out_height) {
-  // TODO: GetWindowRect
-  if (out_x) *out_x = 0;
-  if (out_y) *out_y = 0;
-  if (out_width) *out_width = 0;
-  if (out_height) *out_height = 0;
-  return false;
+  if (!window_id) return false;
+
+  auto* window = WindowStore::Instance().Get(std::string(window_id));
+  if (!window || !window->hwnd) {
+    if (out_x) *out_x = 0;
+    if (out_y) *out_y = 0;
+    if (out_width) *out_width = 0;
+    if (out_height) *out_height = 0;
+    return false;
+  }
+
+  RECT rect;
+  if (!GetWindowRect(window->hwnd, &rect)) return false;
+
+  double scale = floating_palette::GetScaleFactorForHwnd(window->hwnd);
+  if (out_x) *out_x = floating_palette::PhysicalToLogical(rect.left, scale);
+  if (out_y) *out_y = floating_palette::PhysicalToLogical(rect.top, scale);
+  if (out_width) *out_width = floating_palette::PhysicalToLogical(rect.right - rect.left, scale);
+  if (out_height) *out_height = floating_palette::PhysicalToLogical(rect.bottom - rect.top, scale);
+  return true;
 }
 
 bool FloatingPalette_IsWindowVisible(const char* window_id) {
-  // TODO: IsWindowVisible(hwnd)
-  return false;
+  if (!window_id) return false;
+
+  auto* window = WindowStore::Instance().Get(std::string(window_id));
+  if (!window || !window->hwnd) return false;
+
+  return ::IsWindowVisible(window->hwnd) != FALSE;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -36,8 +106,9 @@ bool FloatingPalette_IsWindowVisible(const char* window_id) {
 void FloatingPalette_GetCursorPosition(double* out_x, double* out_y) {
   POINT pt;
   if (GetCursorPos(&pt)) {
-    if (out_x) *out_x = static_cast<double>(pt.x);
-    if (out_y) *out_y = static_cast<double>(pt.y);
+    double scale = floating_palette::GetScaleFactorForPoint(pt);
+    if (out_x) *out_x = floating_palette::PhysicalToLogical(pt.x, scale);
+    if (out_y) *out_y = floating_palette::PhysicalToLogical(pt.y, scale);
   } else {
     if (out_x) *out_x = 0;
     if (out_y) *out_y = 0;
@@ -51,8 +122,7 @@ int32_t FloatingPalette_GetCursorScreen(void) {
   HMONITOR monitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONULL);
   if (!monitor) return -1;
 
-  // TODO: Map HMONITOR to screen index
-  return 0;
+  return MonitorHelper::MonitorToIndex(monitor);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -60,35 +130,60 @@ int32_t FloatingPalette_GetCursorScreen(void) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 int32_t FloatingPalette_GetScreenCount(void) {
-  return GetSystemMetrics(SM_CMONITORS);
+  return MonitorHelper::GetMonitorCount();
 }
 
 bool FloatingPalette_GetScreenBounds(int32_t screen_index, double* out_x,
                                      double* out_y, double* out_width,
                                      double* out_height) {
-  // TODO: Enumerate monitors and return bounds for given index
-  if (out_x) *out_x = 0;
-  if (out_y) *out_y = 0;
-  if (out_width) *out_width = 0;
-  if (out_height) *out_height = 0;
-  return false;
+  MonitorInfo info;
+  if (!MonitorHelper::GetMonitorByIndex(screen_index, info)) {
+    if (out_x) *out_x = 0;
+    if (out_y) *out_y = 0;
+    if (out_width) *out_width = 0;
+    if (out_height) *out_height = 0;
+    return false;
+  }
+
+  double sf = info.scale_factor;
+  if (out_x) *out_x = floating_palette::PhysicalToLogical(info.bounds.left, sf);
+  if (out_y) *out_y = floating_palette::PhysicalToLogical(info.bounds.top, sf);
+  if (out_width)
+    *out_width = floating_palette::PhysicalToLogical(info.bounds.right - info.bounds.left, sf);
+  if (out_height)
+    *out_height = floating_palette::PhysicalToLogical(info.bounds.bottom - info.bounds.top, sf);
+  return true;
 }
 
 bool FloatingPalette_GetScreenVisibleBounds(int32_t screen_index,
                                             double* out_x, double* out_y,
                                             double* out_width,
                                             double* out_height) {
-  // TODO: SystemParametersInfo(SPI_GETWORKAREA, ...) for given monitor
-  if (out_x) *out_x = 0;
-  if (out_y) *out_y = 0;
-  if (out_width) *out_width = 0;
-  if (out_height) *out_height = 0;
-  return false;
+  MonitorInfo info;
+  if (!MonitorHelper::GetMonitorByIndex(screen_index, info)) {
+    if (out_x) *out_x = 0;
+    if (out_y) *out_y = 0;
+    if (out_width) *out_width = 0;
+    if (out_height) *out_height = 0;
+    return false;
+  }
+
+  double sf = info.scale_factor;
+  if (out_x) *out_x = floating_palette::PhysicalToLogical(info.work_area.left, sf);
+  if (out_y) *out_y = floating_palette::PhysicalToLogical(info.work_area.top, sf);
+  if (out_width)
+    *out_width =
+        floating_palette::PhysicalToLogical(info.work_area.right - info.work_area.left, sf);
+  if (out_height)
+    *out_height =
+        floating_palette::PhysicalToLogical(info.work_area.bottom - info.work_area.top, sf);
+  return true;
 }
 
 double FloatingPalette_GetScreenScaleFactor(int32_t screen_index) {
-  // TODO: GetDpiForMonitor for given monitor
-  return 1.0;
+  MonitorInfo info;
+  if (!MonitorHelper::GetMonitorByIndex(screen_index, info)) return 1.0;
+  return info.scale_factor;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -104,20 +199,42 @@ bool FloatingPalette_GetActiveAppBounds(double* out_x, double* out_y,
   RECT rect;
   if (!GetWindowRect(fg, &rect)) return false;
 
-  if (out_x) *out_x = static_cast<double>(rect.left);
-  if (out_y) *out_y = static_cast<double>(rect.top);
-  if (out_width) *out_width = static_cast<double>(rect.right - rect.left);
-  if (out_height) *out_height = static_cast<double>(rect.bottom - rect.top);
+  double scale = floating_palette::GetScaleFactorForHwnd(fg);
+  if (out_x) *out_x = floating_palette::PhysicalToLogical(rect.left, scale);
+  if (out_y) *out_y = floating_palette::PhysicalToLogical(rect.top, scale);
+  if (out_width) *out_width = floating_palette::PhysicalToLogical(rect.right - rect.left, scale);
+  if (out_height) *out_height = floating_palette::PhysicalToLogical(rect.bottom - rect.top, scale);
   return true;
 }
 
 int32_t FloatingPalette_GetActiveAppIdentifier(char* out_buffer,
                                                int32_t buffer_size) {
-  // TODO: GetForegroundWindow → GetWindowThreadProcessId → process name
-  if (out_buffer && buffer_size > 0) {
-    out_buffer[0] = '\0';
-  }
-  return 0;
+  if (!out_buffer || buffer_size <= 0) return 0;
+  out_buffer[0] = '\0';
+
+  HWND fg = GetForegroundWindow();
+  if (!fg) return 0;
+
+  DWORD pid = 0;
+  GetWindowThreadProcessId(fg, &pid);
+  if (pid == 0) return 0;
+
+  HANDLE process =
+      OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+  if (!process) return 0;
+
+  char path[MAX_PATH] = {};
+  DWORD path_size = MAX_PATH;
+  BOOL ok = QueryFullProcessImageNameA(process, 0, path, &path_size);
+  CloseHandle(process);
+
+  if (!ok || path_size == 0) return 0;
+
+  int len = static_cast<int>(path_size);
+  if (len >= buffer_size) len = buffer_size - 1;
+  memcpy(out_buffer, path, len);
+  out_buffer[len] = '\0';
+  return len;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -1,4 +1,4 @@
-import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/element2.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
@@ -10,11 +10,11 @@ import 'utils.dart';
 class PaletteGenerator extends GeneratorForAnnotation<FloatingPaletteApp> {
   @override
   String generateForAnnotatedElement(
-    Element element,
+    Element2 element,
     ConstantReader annotation,
     BuildStep buildStep,
   ) {
-    if (element is! ClassElement) {
+    if (element is! ClassElement2) {
       throw InvalidGenerationSourceError(
         '@FloatingPaletteApp can only be applied to classes.',
         element: element,
@@ -391,9 +391,9 @@ class PaletteGenerator extends GeneratorForAnnotation<FloatingPaletteApp> {
       if (eventType is! InterfaceType) continue;
 
       final typeName = eventType.getDisplayString();
-      final element = eventType.element;
+      final element = eventType.element3;
 
-      if (element is! ClassElement) {
+      if (element is! ClassElement2) {
         throw InvalidGenerationSourceError(
           '$typeName is not a class. Event types must be classes with a '
           'fromMap factory constructor.',

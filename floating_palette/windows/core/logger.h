@@ -1,18 +1,21 @@
 #pragma once
 
-/// Debug-only logging via OutputDebugStringA.
+/// Dual-output logging: stderr (visible in `flutter run`) + OutputDebugStringA.
 ///
 /// Usage:
 ///   FP_LOG("Window", "create id=" + id);
 ///
 /// Viewing logs:
-///   Use DebugView (Sysinternals) or Visual Studio Output window.
-///   Filter by "[floating_palette:" prefix.
+///   - `flutter run -d windows` console (stderr)
+///   - DebugView (Sysinternals) or Visual Studio Output window
+///   Filter by "[FP:" prefix.
 
-#ifdef _DEBUG
+// NOTE: _DEBUG guard removed temporarily for diagnostics.
+// Restore once the secondary-palette show bug is fixed.
 
 #include <windows.h>
 
+#include <cstdio>
 #include <sstream>
 #include <string>
 
@@ -20,8 +23,11 @@ namespace floating_palette {
 
 inline void LogMessage(const char* category, const char* message) {
   std::ostringstream oss;
-  oss << "[floating_palette:" << category << "] " << message << "\n";
-  OutputDebugStringA(oss.str().c_str());
+  oss << "[FP:" << category << "] " << message << "\n";
+  const std::string& s = oss.str();
+  OutputDebugStringA(s.c_str());
+  fprintf(stderr, "%s", s.c_str());
+  fflush(stderr);
 }
 
 inline void LogMessage(const char* category, const std::string& message) {
@@ -32,9 +38,3 @@ inline void LogMessage(const char* category, const std::string& message) {
 
 #define FP_LOG(category, message) \
   ::floating_palette::LogMessage(category, message)
-
-#else
-
-#define FP_LOG(category, message) ((void)0)
-
-#endif
