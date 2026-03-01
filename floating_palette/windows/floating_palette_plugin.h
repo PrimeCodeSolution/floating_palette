@@ -19,6 +19,7 @@ class InputService;
 class MessageService;
 class ScreenService;
 class SnapService;
+class TextSelectionService;
 class TransformService;
 class VisibilityService;
 class WindowService;
@@ -60,6 +61,7 @@ class FloatingPalettePlugin : public flutter::Plugin {
   std::unique_ptr<MessageService> message_service_;
   std::unique_ptr<HostService> host_service_;
   std::unique_ptr<SnapService> snap_service_;
+  std::unique_ptr<TextSelectionService> text_selection_service_;
   std::unique_ptr<DragCoordinator> drag_coordinator_;
 
   void InitializeServices();

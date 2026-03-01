@@ -20,6 +20,7 @@
 #include "services/message_service.h"
 #include "services/screen_service.h"
 #include "services/snap_service.h"
+#include "services/text_selection_service.h"
 #include "services/transform_service.h"
 #include "services/visibility_service.h"
 #include "services/window_service.h"
@@ -108,6 +109,9 @@ void FloatingPalettePlugin::InitializeServices() {
 
   snap_service_ = std::make_unique<SnapService>();
   snap_service_->SetEventSink(event_sink);
+
+  text_selection_service_ = std::make_unique<TextSelectionService>();
+  text_selection_service_->SetEventSink(event_sink);
 
   // Create DragCoordinator and wire it up
   drag_coordinator_ = std::make_unique<DragCoordinator>();
@@ -210,6 +214,8 @@ void FloatingPalettePlugin::HandleMethodCall(
     host_service_->Handle(command, window_id, params, std::move(result));
   } else if (service == "snap") {
     snap_service_->Handle(command, window_id, params, std::move(result));
+  } else if (service == "textSelection") {
+    text_selection_service_->Handle(command, window_id, params, std::move(result));
   } else {
     result->Error("UNKNOWN_SERVICE", "Unknown service: " + service);
   }

@@ -65,6 +65,8 @@ list(APPEND PLUGIN_SOURCES
   "services/host_service.cpp"
   "services/snap_service.h"
   "services/snap_service.cpp"
+  "services/text_selection_service.h"
+  "services/text_selection_service.cpp"
   "services/window_channel_router.h"
   "services/window_channel_router.cpp"
 )
@@ -91,7 +93,7 @@ target_compile_definitions(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL)
 # dependencies here.
 target_include_directories(${PLUGIN_NAME} INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin dwmapi Shcore comctl32)
+target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin dwmapi Shcore comctl32 oleaut32 ole32)
 
 # List of absolute paths to libraries that should be bundled with the plugin.
 # This list could contain prebuilt libraries, or libraries created by an
